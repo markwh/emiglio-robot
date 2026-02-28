@@ -9,6 +9,7 @@ import logging
 
 import httpx
 
+from emiglio.brain import BrainClient
 from emiglio.config import settings
 from emiglio.event_bus import EventBus
 from emiglio.models import Events, MotorCommand
@@ -37,11 +38,13 @@ class ConversationManager:
         camera: Camera | None = None,
         audio_capture=None,
         audio_playback=None,
+        brain: BrainClient | None = None,
     ) -> None:
         self._bus = bus
         self._camera = camera
         self._capture = audio_capture
         self._playback = audio_playback
+        self._brain = brain
         self._client = httpx.AsyncClient(timeout=30.0)
         self._busy = False
 
@@ -166,7 +169,12 @@ class ConversationManager:
             return ""
 
     async def _think(self, transcript: str, context: str = "") -> dict:
-        """Call the brain server."""
+        """Call the brain (inline API or server, depending on config)."""
+        if self._brain is not None:
+            return await self._brain.think(
+                transcript, context, server_url=settings.server_brain_url
+            )
+        # Fallback: direct HTTP call (no BrainClient configured)
         try:
             resp = await self._client.post(
                 f"{settings.server_brain_url}/think",

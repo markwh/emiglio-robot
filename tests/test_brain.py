@@ -1,22 +1,8 @@
-"""Tests for the brain service command parsing.
+"""Tests for the brain module — command parsing and BrainClient."""
 
-The parse_commands function is duplicated here since server/brain/app.py
-has heavy dependencies (anthropic) that aren't part of the Pi-side package.
-"""
+from unittest.mock import patch
 
-import re
-
-
-def parse_commands(text: str) -> tuple[str, list[dict]]:
-    """Extract [COMMAND:action:params] from response text."""
-    commands = []
-    clean_text = text
-    for match in re.finditer(r'\[COMMAND:(\w+):([^\]]+)\]', text):
-        action = match.group(1)
-        params = match.group(2)
-        commands.append({"action": action, "params": params})
-        clean_text = clean_text.replace(match.group(0), "")
-    return clean_text.strip(), commands
+from emiglio.brain import BrainClient, parse_commands
 
 
 def test_parse_commands_extracts_move():
@@ -41,3 +27,26 @@ def test_parse_commands_none():
     clean, commands = parse_commands(text)
     assert len(commands) == 0
     assert clean == text
+
+
+def test_brain_client_inline_mode():
+    """BrainClient in inline mode creates an Anthropic client (or warns if no key)."""
+    brain = BrainClient(mode="inline", model="claude-sonnet-4-5-20250929")
+    assert brain._mode == "inline"
+    # Client may or may not be available depending on ANTHROPIC_API_KEY
+    assert isinstance(brain.available, bool)
+
+
+def test_brain_client_server_mode():
+    """BrainClient in server mode creates an HTTP client."""
+    brain = BrainClient(mode="server")
+    assert brain._mode == "server"
+    assert brain.available is True
+    assert brain._http is not None
+
+
+def test_brain_client_invalid_mode():
+    """BrainClient raises ValueError for unknown mode."""
+    import pytest
+    with pytest.raises(ValueError, match="Unknown brain_mode"):
+        BrainClient(mode="banana")
