@@ -13,7 +13,8 @@
 | Hot glue gun + sticks | Mount camera, mic, cable anchors, USB sockets |
 | Small pliers / tweezers | Working in tight head cavity |
 | Flush cutters | Trimming leads, cutting zip ties |
-| Ruler / calipers | Measuring head cavity, eye sockets, neck opening |
+| Ruler / calipers | Measuring cavities, sockets, openings across all sections |
+| Small flat-head screwdriver | Screw terminal connections on base connector |
 
 ### Nice to Have
 
@@ -33,8 +34,8 @@
 |------|-----|---------|
 | JST-XH 4-pin connector pair (male + female + crimp pins) | 1 | Neck disconnect for speaker + LED |
 | USB 2.0 extension cables (short, ~150 mm) | 2 | Neck disconnect for camera + mic USB |
-| 22 AWG stranded wire (red + black) | ~600 mm each | Speaker wires |
-| 26 AWG stranded wire (2 colors) | ~600 mm each | LED wires |
+| 22 AWG stranded wire (red + black) | ~2 m each | Speaker wires, motor wires, ground bus |
+| 26 AWG stranded wire (4+ colors) | ~2 m each | LED wires, GPIO signal wires (base-to-body) |
 | Heat shrink tubing, assorted sizes | A few pieces | Insulating solder joints |
 
 ### Mounting
@@ -48,7 +49,7 @@
 | M2 or M2.5 screws + standoffs | 4-8 | Mounting camera board (if board cam) |
 | Felt pads (small, adhesive) | 4-6 | Head-to-body friction fit pads |
 
-### Electronics (Head-Specific)
+### Electronics (Head)
 
 | Item | Qty | Purpose |
 |------|-----|---------|
@@ -57,7 +58,25 @@
 | USB webcam (small / board style) | 1 | Vision |
 | USB microphone (dongle or MEMS board) | 1 | Audio input |
 
-**Note:** The PAM8403 amplifier, Raspberry Pi, TB6612FNG motor driver, and power components are in the body, not the head. See the electronics workstream for those parts.
+### Electronics (Base)
+
+| Item | Qty | Purpose |
+|------|-----|---------|
+| TB6612FNG motor driver breakout | 1 | Dual H-bridge for 2 DC motors |
+| 4xAA battery holder | 1 | 6V motor power supply |
+| AA batteries | 4 | Motor power |
+| 10-position screw terminal block | 1 | Base-to-body connector (prototyping) |
+| Velcro strips (adhesive) | 1 pair | Secure battery holder for easy removal |
+| Silicone grease (small tube) | 1 | Gearbox lubrication if noisy |
+
+### Electronics (Body)
+
+| Item | Qty | Purpose |
+|------|-----|---------|
+| Raspberry Pi 5 (4GB) | 1 | Main computer |
+| PAM8403 amplifier board | 1 | Drives speaker from Pi audio out |
+| Breadboard (half-size) | 1 | Prototyping connections in body |
+| USB-C power supply (5V 3A+) | 1 | Pi power (wall adapter for v1.0) |
 
 ## What's Already on Hand
 
@@ -65,12 +84,17 @@ Per project overview and Elegoo starter kit:
 
 - [x] Emiglio robot chassis (head, body, base)
 - [x] Existing speaker in head (needs testing)
+- [x] Existing DC motors in base (needs wire prep)
 - [x] LEDs and resistors (Elegoo kit)
 - [x] Breadboard and jumper wires (Elegoo kit)
 - [ ] Raspberry Pi 5 (on order)
 - [ ] TB6612FNG motor driver (to purchase)
 - [ ] PAM8403 amplifier (to purchase)
+- [ ] 4xAA battery holder (to purchase)
 - [ ] USB webcam (to purchase — look for compact/board style)
 - [ ] USB microphone (to purchase)
 - [ ] JST-XH connectors (to purchase)
 - [ ] USB extension cables (to purchase)
+- [ ] Screw terminal block, 10-position (to purchase)
+- [ ] 22 AWG + 26 AWG stranded wire, assorted colors (to purchase)
+- [ ] Velcro strips (to purchase)

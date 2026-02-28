@@ -15,10 +15,12 @@ The robot splits into three main sections, assembled bottom-up:
 ### Component Mounting
 
 - [Head Components](mounting/head-components.md) — Camera, mic, speaker, LED placement inside the head dome. Includes cable routing plan, neck connector strategy, and measurements checklist.
+- [Base / Locomotion](mounting/base-locomotion.md) — Motor layout, TB6612FNG driver placement, battery pack mounting, and base-to-body cable interface.
 
 ### Build Guides
 
 - [Head Wiring](build-guide/head-wiring.md) — Electrical connections between head components and the Pi/amplifier in the body. Wiring diagram, connector pinouts, and assembly sequence.
+- [Base Wiring](build-guide/base-wiring.md) — Motor-to-TB6612FNG wiring, GPIO pin map, base-to-body connector pinout, and step-by-step assembly with troubleshooting.
 
 ### Reference
 
@@ -28,8 +30,8 @@ The robot splits into three main sections, assembled bottom-up:
 ## Current Status
 
 - **Head:** Planning complete. Waiting on physical measurements and parts (Pi 5, USB cam, USB mic, PAM8403, JST connectors).
-- **Body:** Not yet documented — will cover Pi mounting, oatmeal canister compartment idea, power routing.
-- **Base:** Not yet documented — motors already in place, needs wiring plan to TB6612FNG.
+- **Base:** Planning complete. Motors already in place; needs physical measurements, motor wire prep, and TB6612FNG + battery mounting.
+- **Body:** Not yet documented — will cover Pi mounting, oatmeal canister compartment idea, power routing, and how it ties head and base together.
 
 ## Build Order (Recommended)
 
