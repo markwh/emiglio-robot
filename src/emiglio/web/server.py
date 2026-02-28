@@ -28,9 +28,32 @@ def create_app(
     conversation: ConversationManager | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Emiglio Robot")
+    connected_clients: set[WebSocket] = set()
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
+    # -- Broadcast helpers --
+    async def _broadcast(msg: dict) -> None:
+        """Send a JSON message to all connected WebSocket clients."""
+        for client in list(connected_clients):
+            try:
+                await client.send_json(msg)
+            except Exception:
+                connected_clients.discard(client)
+
+    async def _broadcast_motor_state(command: MotorCommand) -> None:
+        await _broadcast({
+            "type": "motor_state",
+            "left": command.left,
+            "right": command.right,
+        })
+
+    async def _broadcast_event(event: str, detail: str = "") -> None:
+        await _broadcast({"type": "event", "event": event, "detail": detail})
+
+    bus.subscribe(Events.MOTOR_COMMAND, _broadcast_motor_state)
+
+    # -- Routes --
     @app.get("/")
     async def index():
         return FileResponse(STATIC_DIR / "index.html")
@@ -55,8 +78,18 @@ def create_app(
     @app.websocket("/ws")
     async def websocket_endpoint(ws: WebSocket):
         await ws.accept()
+        connected_clients.add(ws)
         logger.info("WebSocket client connected")
         try:
+            # Send initial subsystem status
+            await ws.send_json({
+                "type": "subsystem_status",
+                "motors": True,
+                "camera": camera is not None and camera.get_jpeg() is not None,
+                "audio": conversation is not None and conversation._capture is not None,
+                "brain": conversation is not None,
+            })
+
             while True:
                 raw = await ws.receive_text()
                 try:
@@ -76,6 +109,7 @@ def create_app(
 
                 elif msg_type == "stop":
                     await bus.publish(Events.MOTOR_COMMAND, MotorCommand(0, 0))
+                    await _broadcast_event("stop", "Emergency stop")
 
                 elif msg_type == "talk":
                     # Push-to-talk: trigger voice interaction
@@ -86,10 +120,12 @@ def create_app(
                         await ws.send_json({"type": "status", "message": "Already listening..."})
                         continue
 
+                    await _broadcast_event("voice", "Push-to-talk activated")
+
                     async def send_status(msg: str):
                         await ws.send_json({"type": "status", "message": msg})
+                        await _broadcast_event("conversation", msg)
 
-                    # Run conversation in background so WebSocket stays responsive
                     asyncio.create_task(
                         _run_conversation(conversation, ws, send_status, voice=True)
                     )
@@ -106,8 +142,11 @@ def create_app(
                         await ws.send_json({"type": "status", "message": "Still thinking..."})
                         continue
 
+                    await _broadcast_event("text", text)
+
                     async def send_status_text(msg: str):
                         await ws.send_json({"type": "status", "message": msg})
+                        await _broadcast_event("conversation", msg)
 
                     asyncio.create_task(
                         _run_conversation(
@@ -120,6 +159,8 @@ def create_app(
         except WebSocketDisconnect:
             logger.info("WebSocket client disconnected")
             await bus.publish(Events.MOTOR_COMMAND, MotorCommand(0, 0))
+        finally:
+            connected_clients.discard(ws)
 
     return app
 
