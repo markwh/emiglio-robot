@@ -1,8 +1,8 @@
 """Emiglio robot entry point. Wires subsystems and starts the web server."""
 
-import asyncio
 import logging
 import signal
+import sys
 
 import uvicorn
 
@@ -19,17 +19,30 @@ logging.basicConfig(
 )
 logger = logging.getLogger("emiglio")
 
+BANNER = r"""
+  _____ __  __ ___ ____ _     ___ ___
+ | ____|  \/  |_ _/ ___| |   |_ _/ _ \
+ |  _| | |\/| || | |  _| |    | | | | |
+ | |___| |  | || | |_| | |___ | | |_| |
+ |_____|_|  |_|___\____|_____|___\___/
+"""
+
 
 def main() -> None:
-    logger.info("Starting Emiglio (hardware_mode=%s)", settings.hardware_mode)
+    print(BANNER)
+    logger.info("Starting Emiglio v0.1.0 (hardware_mode=%s)", settings.hardware_mode)
 
+    # -- Core --
     bus = EventBus()
     locomotion = LocomotionController(bus)
 
+    # -- Camera (optional) --
     camera = Camera()
     camera.start()
+    if camera._cap is None:
+        logger.warning("Camera unavailable — running without video")
 
-    # Audio subsystems — optional, may fail if no PortAudio/sounddevice
+    # -- Audio (optional) --
     audio_capture = None
     audio_playback = None
     try:
@@ -41,6 +54,7 @@ def main() -> None:
     except OSError as e:
         logger.warning("Audio subsystem unavailable: %s", e)
 
+    # -- Conversation --
     conversation = ConversationManager(
         bus=bus,
         camera=camera,
@@ -48,15 +62,31 @@ def main() -> None:
         audio_playback=audio_playback,
     )
 
+    # -- Web app --
     app = create_app(bus, locomotion, camera=camera, conversation=conversation)
 
+    # -- Shutdown --
+    cleanup_done = False
+
     def shutdown(sig, frame):
+        nonlocal cleanup_done
+        if cleanup_done:
+            return
+        cleanup_done = True
         logger.info("Shutting down...")
         camera.stop()
         locomotion.cleanup()
 
     signal.signal(signal.SIGINT, shutdown)
     signal.signal(signal.SIGTERM, shutdown)
+
+    # -- Startup summary --
+    subsystems = []
+    subsystems.append("motors (mock)" if settings.hardware_mode == "mock" else "motors (GPIO)")
+    subsystems.append("camera" if camera._cap is not None else "camera (off)")
+    subsystems.append("audio" if audio_capture else "audio (off)")
+    logger.info("Subsystems: %s", ", ".join(subsystems))
+    logger.info("Web UI: http://%s:%d", settings.web_host, settings.web_port)
 
     uvicorn.run(
         app,

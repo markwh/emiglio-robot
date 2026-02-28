@@ -16,3 +16,7 @@ context/*.wav
 # IDE
 .idea/
 .vscode/
+
+# Test artifacts
+camera_test_snapshot.jpg
+.pytest_cache/

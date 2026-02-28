@@ -50,11 +50,21 @@ class Camera:
         )
 
     def _capture_loop(self) -> None:
+        consecutive_failures = 0
         while self._running and self._cap is not None:
             ok, frame = self._cap.read()
             if not ok:
-                time.sleep(0.01)
+                consecutive_failures += 1
+                if consecutive_failures > 50:
+                    logger.warning("Camera: %d consecutive read failures, retrying open...", consecutive_failures)
+                    self._cap.release()
+                    time.sleep(1.0)
+                    self._cap = cv2.VideoCapture(settings.camera_index)
+                    consecutive_failures = 0
+                else:
+                    time.sleep(0.01)
                 continue
+            consecutive_failures = 0
             _, jpeg = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
             with self._lock:
                 self._frame = frame

@@ -37,7 +37,14 @@ def create_app(
 
     @app.get("/health")
     async def health():
-        return {"status": "ok", "camera": camera is not None}
+        return {
+            "status": "ok",
+            "subsystems": {
+                "camera": camera is not None and camera.get_jpeg() is not None,
+                "audio": conversation is not None and conversation._capture is not None,
+                "brain": conversation is not None,
+            },
+        }
 
     @app.get("/stream")
     async def camera_stream():
