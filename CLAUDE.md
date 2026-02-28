@@ -39,4 +39,34 @@ src/emiglio/           # Pi-side package (installed as 'emiglio')
 server/                # Home server Docker services
 scripts/               # Hardware test scripts
 tests/                 # pytest tests
+docs/                  # Project documentation
+  electronics/         # Circuit design, wiring, components
+  assembly/            # Physical build guides and plans
+  ai-skills/           # AI/ML research and experiment notes
+notebooks/             # Jupyter notebooks for AI experiments
 ```
+
+## Workstream / Worktree Workflow
+
+This project uses **git worktrees** for parallel development across workstreams. Each worktree has its own branch and a `WORKTREE.md` with scoped agent instructions.
+
+### Branches
+
+- `main` — stable releases (merge from `develop` after review)
+- `develop` — integration branch (PM agent lives here)
+- `develop-software` — Pi-side + server-side code
+- `develop-electronics` — circuit design, wiring, components
+- `develop-assembly` — physical robot build docs
+- `develop-ai-skills` — AI/ML experiments, prompt engineering
+
+### Worktree Locations
+
+All worktrees live under `.claude/worktrees/{name}/`. Each contains a `WORKTREE.md` that scopes the agent's role and responsibilities.
+
+### Coordination
+
+- The **PM agent** on `develop` creates worktrees, writes instructions, and merges completed work.
+- **Workstream agents** commit to their own branches and flag readiness.
+- Merges into `develop` are handled by the PM agent.
+- Merges from `develop` into `main` happen during periodic reviews with Mark.
+- If a `WORKTREE.md` exists in your repo root, follow its instructions for your workstream scope.
