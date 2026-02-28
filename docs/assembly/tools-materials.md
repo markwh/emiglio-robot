@@ -21,7 +21,8 @@
 | Tool | Purpose |
 |------|---------|
 | Dremel / rotary tool | Enlarge eye socket if needed for camera fit |
-| Drill + small bits (2-4 mm) | Mic sound hole, ventilation, cable pass-through |
+| Drill + small bits (2-4 mm) | Mic sound hole, ventilation, cable pass-through, power cable hole |
+| Hole saw or step drill bit (~10 mm) | Power cable pass-through in barrel rear wall |
 | Heat shrink gun / lighter | Insulating solder joints |
 | Third-hand / helping hands | Holding parts while soldering |
 | Label maker or masking tape + pen | Labeling cables at neck connector |
@@ -46,8 +47,9 @@
 | Small zip ties (100 mm) | ~10 | Cable bundling, strain relief |
 | Adhesive cable clips | 2-4 | Routing cables inside head/body |
 | Double-sided foam tape (thin) | 1 roll | Mounting mic, cushioning camera |
-| M2 or M2.5 screws + standoffs | 4-8 | Mounting camera board (if board cam) |
+| M2.5 screws + standoffs (10-12 mm) | 4-8 | Mounting Pi 5 and camera board |
 | Felt pads (small, adhesive) | 4-6 | Head-to-body friction fit pads |
+| Rubber grommet (~10 mm ID) | 1 | Protect USB-C power cable at barrel wall hole |
 
 ### Electronics (Head)
 
@@ -77,6 +79,9 @@
 | PAM8403 amplifier board | 1 | Drives speaker from Pi audio out |
 | Breadboard (half-size) | 1 | Prototyping connections in body |
 | USB-C power supply (5V 3A+) | 1 | Pi power (wall adapter for v1.0) |
+| Passive aluminum heat sink (Pi 5) | 1 | Thermal management for Pi SoC |
+| 3.5mm aux cable (short, ~150 mm) | 1 | Pi audio out to PAM8403 input |
+| Dupont jumper wires (M-M, M-F) | ~20 | GPIO header to breadboard connections |
 
 ## What's Already on Hand
 
@@ -98,3 +103,7 @@ Per project overview and Elegoo starter kit:
 - [ ] Screw terminal block, 10-position (to purchase)
 - [ ] 22 AWG + 26 AWG stranded wire, assorted colors (to purchase)
 - [ ] Velcro strips (to purchase)
+- [ ] Passive heat sink for Pi 5 (to purchase)
+- [ ] 3.5mm aux cable, short (to purchase)
+- [ ] Rubber grommet ~10 mm (to purchase)
+- [ ] Oatmeal canister or similar cylinder for body sled (source from pantry or hardware store)

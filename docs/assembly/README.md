@@ -15,11 +15,13 @@ The robot splits into three main sections, assembled bottom-up:
 ### Component Mounting
 
 - [Head Components](mounting/head-components.md) — Camera, mic, speaker, LED placement inside the head dome. Includes cable routing plan, neck connector strategy, and measurements checklist.
+- [Body Barrel](mounting/body-barrel.md) — Pi 5 mounting, breadboard, PAM8403 placement, oatmeal canister sled concept, power input, and cable junction layout.
 - [Base / Locomotion](mounting/base-locomotion.md) — Motor layout, TB6612FNG driver placement, battery pack mounting, and base-to-body cable interface.
 
 ### Build Guides
 
 - [Head Wiring](build-guide/head-wiring.md) — Electrical connections between head components and the Pi/amplifier in the body. Wiring diagram, connector pinouts, and assembly sequence.
+- [Body Wiring](build-guide/body-wiring.md) — Master wiring diagram, GPIO allocation, PAM8403 audio chain, power distribution, breadboard layout, and full integration assembly sequence.
 - [Base Wiring](build-guide/base-wiring.md) — Motor-to-TB6612FNG wiring, GPIO pin map, base-to-body connector pinout, and step-by-step assembly with troubleshooting.
 
 ### Reference
@@ -29,9 +31,10 @@ The robot splits into three main sections, assembled bottom-up:
 
 ## Current Status
 
-- **Head:** Planning complete. Waiting on physical measurements and parts (Pi 5, USB cam, USB mic, PAM8403, JST connectors).
-- **Base:** Planning complete. Motors already in place; needs physical measurements, motor wire prep, and TB6612FNG + battery mounting.
-- **Body:** Not yet documented — will cover Pi mounting, oatmeal canister compartment idea, power routing, and how it ties head and base together.
+- **Head:** Planning complete. Waiting on physical measurements and parts.
+- **Body:** Planning complete. Central hub tying head and base together; canister sled concept documented.
+- **Base:** Planning complete. Motors in place; needs measurements, wire prep, and TB6612FNG + battery mounting.
+- **All sections** waiting on: Pi 5 delivery, parts purchase, and physical measurements.
 
 ## Build Order (Recommended)
 
