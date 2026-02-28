@@ -172,6 +172,15 @@
     sendStop();
   });
 
+  // -- Camera feed error handling --
+  const cameraFeed = document.getElementById("camera-feed");
+  const cameraOverlay = document.getElementById("camera-overlay");
+  if (cameraFeed) {
+    cameraFeed.addEventListener("error", () => {
+      cameraOverlay.classList.remove("hidden");
+    });
+  }
+
   // -- Init --
   drawJoystick(0, 0);
   connect();

@@ -11,13 +11,19 @@ from fastapi.responses import FileResponse
 from emiglio.event_bus import EventBus
 from emiglio.models import Events, MotorCommand, JoystickInput
 from emiglio.locomotion.controller import LocomotionController
+from emiglio.vision.camera import Camera
+from emiglio.vision.stream import stream_response
 
 logger = logging.getLogger(__name__)
 
 STATIC_DIR = Path(__file__).parent / "static"
 
 
-def create_app(bus: EventBus, locomotion: LocomotionController) -> FastAPI:
+def create_app(
+    bus: EventBus,
+    locomotion: LocomotionController,
+    camera: Camera | None = None,
+) -> FastAPI:
     app = FastAPI(title="Emiglio Robot")
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -28,7 +34,13 @@ def create_app(bus: EventBus, locomotion: LocomotionController) -> FastAPI:
 
     @app.get("/health")
     async def health():
-        return {"status": "ok"}
+        return {"status": "ok", "camera": camera is not None}
+
+    @app.get("/stream")
+    async def camera_stream():
+        if camera is None:
+            return {"error": "No camera available"}
+        return stream_response(camera)
 
     @app.websocket("/ws")
     async def websocket_endpoint(ws: WebSocket):

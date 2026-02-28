@@ -9,6 +9,7 @@ import uvicorn
 from emiglio.config import settings
 from emiglio.event_bus import EventBus
 from emiglio.locomotion.controller import LocomotionController
+from emiglio.vision.camera import Camera
 from emiglio.web.server import create_app
 
 logging.basicConfig(
@@ -23,10 +24,15 @@ def main() -> None:
 
     bus = EventBus()
     locomotion = LocomotionController(bus)
-    app = create_app(bus, locomotion)
+
+    camera = Camera()
+    camera.start()
+
+    app = create_app(bus, locomotion, camera=camera)
 
     def shutdown(sig, frame):
         logger.info("Shutting down...")
+        camera.stop()
         locomotion.cleanup()
 
     signal.signal(signal.SIGINT, shutdown)
