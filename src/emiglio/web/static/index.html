@@ -13,32 +13,79 @@
     </header>
 
     <main>
-        <section id="camera-section">
-            <img id="camera-feed" src="/stream" alt="Camera feed">
-            <div id="camera-overlay" class="hidden">No camera</div>
+        <section id="simulator-section">
+            <div id="sim-header">
+                <span class="section-title">Virtual Robot</span>
+                <div id="sim-controls">
+                    <button id="sim-reset">Reset</button>
+                    <label id="trail-toggle"><input type="checkbox" id="sim-trail" checked> Trail</label>
+                </div>
+            </div>
+            <div id="sim-body">
+                <canvas id="sim-canvas" width="500" height="500"></canvas>
+                <div id="sim-panel">
+                    <div id="motor-gauges">
+                        <span class="panel-label">Motors</span>
+                        <div class="gauge-row">
+                            <span class="gauge-label">L</span>
+                            <div class="gauge-track">
+                                <div class="gauge-center"></div>
+                                <div class="gauge-fill" id="gauge-left"></div>
+                            </div>
+                            <span class="gauge-val" id="gauge-left-val">0.00</span>
+                        </div>
+                        <div class="gauge-row">
+                            <span class="gauge-label">R</span>
+                            <div class="gauge-track">
+                                <div class="gauge-center"></div>
+                                <div class="gauge-fill" id="gauge-right"></div>
+                            </div>
+                            <span class="gauge-val" id="gauge-right-val">0.00</span>
+                        </div>
+                    </div>
+                    <div id="subsystem-status">
+                        <span class="panel-label">Subsystems</span>
+                        <div class="subsys-item"><span class="dot off" id="sub-motors"></span> Motors</div>
+                        <div class="subsys-item"><span class="dot off" id="sub-camera"></span> Camera</div>
+                        <div class="subsys-item"><span class="dot off" id="sub-audio"></span> Audio</div>
+                        <div class="subsys-item"><span class="dot off" id="sub-brain"></span> Brain</div>
+                    </div>
+                    <div id="event-log">
+                        <span class="panel-label">Event Log</span>
+                        <div id="event-list"></div>
+                    </div>
+                </div>
+            </div>
         </section>
 
-        <section id="voice-section">
-            <button id="talk-btn">TALK</button>
-            <div id="voice-status">Ready</div>
-        </section>
+        <div id="controls-panel">
+            <section id="joystick-section">
+                <canvas id="joystick" width="200" height="200"></canvas>
+                <div id="motor-readout">L: 0.00 | R: 0.00</div>
+            </section>
 
-        <section id="chat-section">
-            <div id="chat-log"></div>
-            <form id="chat-form">
-                <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off">
-                <button type="submit" id="chat-send">Send</button>
-            </form>
-        </section>
+            <section id="controls">
+                <button id="stop-btn">STOP</button>
+            </section>
 
-        <section id="joystick-section">
-            <canvas id="joystick" width="200" height="200"></canvas>
-            <div id="motor-readout">L: 0.00 | R: 0.00</div>
-        </section>
+            <section id="camera-section">
+                <img id="camera-feed" src="/stream" alt="Camera feed">
+                <div id="camera-overlay" class="hidden">No camera</div>
+            </section>
 
-        <section id="controls">
-            <button id="stop-btn">STOP</button>
-        </section>
+            <section id="voice-section">
+                <button id="talk-btn">TALK</button>
+                <div id="voice-status">Ready</div>
+            </section>
+
+            <section id="chat-section">
+                <div id="chat-log"></div>
+                <form id="chat-form">
+                    <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off">
+                    <button type="submit" id="chat-send">Send</button>
+                </form>
+            </section>
+        </div>
     </main>
 
     <script src="/static/app.js"></script>
