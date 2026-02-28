@@ -1,0 +1,112 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+header {
+    width: 100%;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #16213e;
+}
+
+header h1 {
+    font-size: 1.5rem;
+    color: #00d4ff;
+}
+
+.status {
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.status.connected {
+    background: #00c853;
+    color: #000;
+}
+
+.status.disconnected {
+    background: #ff5252;
+    color: #fff;
+}
+
+main {
+    width: 100%;
+    max-width: 500px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+#camera-section {
+    width: 100%;
+    aspect-ratio: 4/3;
+    background: #0f3460;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #556;
+    font-size: 0.9rem;
+}
+
+#joystick-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#joystick {
+    border-radius: 50%;
+    background: #16213e;
+    border: 2px solid #0f3460;
+    touch-action: none;
+    cursor: pointer;
+}
+
+#motor-readout {
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: #888;
+}
+
+#controls {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+#stop-btn {
+    padding: 0.75rem 2.5rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    background: #ff5252;
+    color: #fff;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+#stop-btn:active {
+    background: #d32f2f;
+}

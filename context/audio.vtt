@@ -1,0 +1,206 @@
+WEBVTT
+
+00:00.000 --> 00:07.240
+So this is the start of a project rather ambitious idea, just an experiment, but
+
+00:07.240 --> 00:14.080
+one that I'm pretty excited about. The idea is one that I've had for a while since
+
+00:14.080 --> 00:23.080
+I saw this robot at my favorite local thrift store. It was in the expensive
+
+00:23.080 --> 00:34.720
+boutique section, so I did pay like $45 for it, but I think it was worth it. Currently
+
+00:34.720 --> 00:41.840
+I have it a little bit disassembled, but basically it's just missing an arm. Otherwise
+
+00:41.840 --> 00:46.120
+that's more or less what it looks like. The head is currently detached and I've
+
+00:46.120 --> 00:59.880
+done more disassembly internally, but this is basically the idea. It's circa maybe 80s or 90s
+
+00:59.880 --> 01:15.280
+toy that, oh, actually this is missing the bottom. So this is the base, which, so you can see it moves
+
+01:15.280 --> 01:25.920
+around and has eyes that light up. There's also lights inside of the blue lights, really good.
+
+01:25.920 --> 01:36.720
+So, okay, so the head comes off. I've taken it off, that is. I just had to unscrew some screws,
+
+01:36.720 --> 01:46.240
+and I also undid or rather clipped a bunch of the wires. So now it comes apart into really
+
+01:46.240 --> 01:57.320
+three nice parts, three nice pieces. So there's this body assembly, oops, let's
+
+01:57.320 --> 02:07.000
+select this arm in there. So, okay, more than three pieces, but we'll consider these the
+
+02:07.000 --> 02:19.480
+three main components right now. There's the body and arm assembly, the bottom wheels and motors
+
+02:21.480 --> 02:27.880
+moving around. And it's pretty simple here, just two motors to move these wheels independently,
+
+02:27.880 --> 02:42.040
+and then a couple other wheels for stabilizing. And then there's the head. Looks like this. I have
+
+02:42.040 --> 02:51.960
+taken out kind of a cool old circuit board. I might have misplaced it, but that went in the back
+
+02:51.960 --> 03:00.360
+here. I don't intend to keep that at least not as part of this project, but I do want to keep
+
+03:00.360 --> 03:13.960
+these three main components because I think they kind of serve as neat discrete functions of what I
+
+03:13.960 --> 03:21.560
+want to eventually build, which is a working robot that moves around my floor and can interact
+
+03:21.560 --> 03:34.520
+with the world around me and with people in different ways. So I want to try and build this as
+
+03:34.520 --> 03:41.240
+quickly as I can. I've gotten pretty quick at building software these days using all the latest tools,
+
+03:41.240 --> 03:50.920
+but this will be my first time doing actual robotics work. So I'm being fairly ambitious.
+
+03:51.560 --> 03:59.960
+But I also think that this is a nice first project for one because I have the materials,
+
+03:59.960 --> 04:09.560
+at least some of them. And also, as I said, it's really kind of nicely compartmentalized into
+
+04:09.560 --> 04:17.880
+these three pieces. So I think what I'd like to do is work kind of independently on this locomotion
+
+04:17.880 --> 04:27.480
+base. So getting something that can just kind of move around this floor. And then in here, I think I'll
+
+04:27.480 --> 04:36.680
+put, I think this is kind of a nice compartment that I can put, you know, something's still
+
+04:36.680 --> 04:46.200
+wonderful. I'm thinking maybe even like a oatmeal canister, but you know, one of those cardboard
+
+04:46.200 --> 04:52.600
+ones and I just stick it in there and I could extract it to see what I then to keep in here,
+
+04:52.600 --> 05:01.400
+which is the main computing and power supply. So all of the computational logic.
+
+05:01.880 --> 05:11.480
+And then ultimately, and this should not be part of the first 1.0 build, but ultimately, I
+
+05:11.480 --> 05:22.200
+really like that these sockets for the arms are really easy to imagine swapping out for other
+
+05:22.200 --> 05:29.080
+components. So just imagine having like a vacuum cleaner or just a more capable robotic arm
+
+05:30.040 --> 05:38.440
+that we attach to it. So that's kind of the idea for this is to have computer and
+
+05:39.720 --> 05:49.880
+just sort of the main interface be in there. And then in the head, of course, I want to have the
+
+05:49.880 --> 05:59.080
+input and output components. So some kind of a camera, it already has a speaker in here,
+
+05:59.080 --> 06:09.720
+which I'd like to keep using that. So it'll have to have, you know, microphone and camera,
+
+06:09.720 --> 06:16.040
+at least one camera. You know, I've got some kind of creative ideas for what to do with the head
+
+06:16.120 --> 06:24.200
+as well. I'd also like to get it to move around. You know, get it to swivel. It'd be cool to get it
+
+06:24.200 --> 06:31.960
+to be able to pivot up and down as well. But that would maybe be more mechanical engineering
+
+06:31.960 --> 06:38.680
+than I can do right now. Also, these arms, you know, if you look at this, it's a fairly complex
+
+06:40.280 --> 06:45.000
+assembly. It's got a few joints and different pieces. I haven't opened this up, but
+
+06:46.360 --> 06:54.280
+well, this is on a spring. Open that like that. So, you know, you could imagine
+
+06:55.000 --> 07:03.400
+something that can bend and unbend these arms. Currently, it's not not very well lubricated, but
+
+07:03.400 --> 07:13.080
+I guess it's set up to be sort of set in place. So that's the main assembly. And what I have for
+
+07:14.040 --> 07:19.640
+one more thing I'll say about the head. And this is kind of what inspired this, an idea that
+
+07:20.840 --> 07:27.240
+I would love to do. Okay. So here's the crazy idea. I got this projector from Amazon,
+
+07:27.720 --> 07:35.880
+and it's real cheap. It was like 40 bucks. I'm a little disappointed in how cheaply built it is,
+
+07:35.880 --> 07:41.720
+but I guess I should have expected that. But I did try it out, and it works well enough for basically
+
+07:41.720 --> 07:47.960
+what I might imagine putting in a robot like this. I mean, actually, you know, it fits inside
+
+07:47.960 --> 07:54.440
+this head, too. So imagine, imagine just this yellow part flipping up and this being inside
+
+07:56.280 --> 08:03.400
+so that you could have a video screen projected onto a wall. And so this robot could travel
+
+08:03.400 --> 08:09.960
+around the house and could interact with you and also show you arbitrary images
+
+08:10.920 --> 08:18.360
+that a computer could render. So that's kind of the setup. And my instructions, I think,
+
+08:18.360 --> 08:27.480
+would be to sort of set this up as a multi-worker project. So I imagine having different sub agents
+
+08:27.480 --> 08:32.280
+that are specialized and even sub-projects specialized to these different components.
+
+08:32.760 --> 08:39.800
+And I'm trying to build this quickly, so I want to use everything that I have on hand.
+
+08:40.520 --> 08:46.520
+So I think I do have a Raspberry, not a Raspberry Pi. Yes, a Raspberry Pi somewhere
+
+08:49.080 --> 08:56.680
+that I could repurpose for this, but I was thinking I could try also to use this chrome box.
+
+08:56.680 --> 09:06.280
+Then I got from eBay. I got a bunch of these. This would obviously not be on unbattery,
+
+09:06.280 --> 09:13.720
+but I could just plug it in for now. You know, I want to keep the software as familiar as I can to
+
+09:13.720 --> 09:21.640
+me. I'm pretty comfortable developing in Python and Docker. So as much as we can work with
+
+09:22.200 --> 09:30.600
+sort of the Python, Docker, Linux, open source stack, all the better. And
+
+09:34.040 --> 09:41.480
+yeah, I can plan to go to a first store this weekend, but really I want to get as much of this done
+
+09:41.480 --> 09:49.080
+as possible using basically this as context. So what I've shown here, and of course I can do follow-ups
+
+09:49.080 --> 09:55.640
+as needed, but this is the idea. I wonder what will come of it. I'm excited.
+
+09:56.520 --> 10:05.800
+We're just shy of 10 minutes with context. Okay, I'm going to stop.
+
