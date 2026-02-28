@@ -20,3 +20,7 @@ context/*.wav
 # Test artifacts
 camera_test_snapshot.jpg
 .pytest_cache/
+
+# local-only folders
+context/
+
