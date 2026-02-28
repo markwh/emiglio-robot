@@ -90,6 +90,120 @@ main {
     display: none !important;
 }
 
+/* Voice section */
+#voice-section {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+#talk-btn {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 700;
+    background: #00d4ff;
+    color: #1a1a2e;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+}
+
+#talk-btn:active,
+#talk-btn.listening {
+    background: #ff9800;
+}
+
+#talk-btn:disabled {
+    background: #555;
+    cursor: not-allowed;
+}
+
+#voice-status {
+    font-size: 0.85rem;
+    color: #888;
+    flex: 1;
+}
+
+/* Chat section */
+#chat-section {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+#chat-log {
+    width: 100%;
+    max-height: 200px;
+    overflow-y: auto;
+    background: #16213e;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+#chat-log:empty::before {
+    content: "Conversation will appear here...";
+    color: #445;
+}
+
+.chat-msg {
+    margin-bottom: 0.5rem;
+}
+
+.chat-msg.user {
+    color: #00d4ff;
+}
+
+.chat-msg.bot {
+    color: #e0e0e0;
+}
+
+.chat-msg .label {
+    font-weight: 600;
+    margin-right: 0.25rem;
+}
+
+#chat-form {
+    display: flex;
+    gap: 0.5rem;
+}
+
+#chat-input {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    background: #16213e;
+    color: #e0e0e0;
+    border: 1px solid #0f3460;
+    border-radius: 0.5rem;
+    outline: none;
+}
+
+#chat-input:focus {
+    border-color: #00d4ff;
+}
+
+#chat-send {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    background: #0f3460;
+    color: #00d4ff;
+    border: 1px solid #0f3460;
+    border-radius: 0.5rem;
+    cursor: pointer;
+}
+
+#chat-send:hover {
+    background: #16213e;
+}
+
+/* Joystick */
 #joystick-section {
     display: flex;
     flex-direction: column;

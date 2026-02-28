@@ -10,6 +10,7 @@ from emiglio.config import settings
 from emiglio.event_bus import EventBus
 from emiglio.locomotion.controller import LocomotionController
 from emiglio.vision.camera import Camera
+from emiglio.conversation import ConversationManager
 from emiglio.web.server import create_app
 
 logging.basicConfig(
@@ -28,7 +29,26 @@ def main() -> None:
     camera = Camera()
     camera.start()
 
-    app = create_app(bus, locomotion, camera=camera)
+    # Audio subsystems — optional, may fail if no PortAudio/sounddevice
+    audio_capture = None
+    audio_playback = None
+    try:
+        from emiglio.audio.capture import AudioCapture
+        from emiglio.audio.playback import AudioPlayback
+        audio_capture = AudioCapture()
+        audio_playback = AudioPlayback()
+        logger.info("Audio subsystem initialized")
+    except OSError as e:
+        logger.warning("Audio subsystem unavailable: %s", e)
+
+    conversation = ConversationManager(
+        bus=bus,
+        camera=camera,
+        audio_capture=audio_capture,
+        audio_playback=audio_playback,
+    )
+
+    app = create_app(bus, locomotion, camera=camera, conversation=conversation)
 
     def shutdown(sig, frame):
         logger.info("Shutting down...")

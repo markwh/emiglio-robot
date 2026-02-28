@@ -1,5 +1,6 @@
 """FastAPI web server with WebSocket for real-time robot control."""
 
+import asyncio
 import json
 import logging
 from pathlib import Path
@@ -13,6 +14,7 @@ from emiglio.models import Events, MotorCommand, JoystickInput
 from emiglio.locomotion.controller import LocomotionController
 from emiglio.vision.camera import Camera
 from emiglio.vision.stream import stream_response
+from emiglio.conversation import ConversationManager
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,7 @@ def create_app(
     bus: EventBus,
     locomotion: LocomotionController,
     camera: Camera | None = None,
+    conversation: ConversationManager | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Emiglio Robot")
 
@@ -63,8 +66,48 @@ def create_app(
                     )
                     command = LocomotionController.joystick_to_motor(joy)
                     await bus.publish(Events.MOTOR_COMMAND, command)
+
                 elif msg_type == "stop":
                     await bus.publish(Events.MOTOR_COMMAND, MotorCommand(0, 0))
+
+                elif msg_type == "talk":
+                    # Push-to-talk: trigger voice interaction
+                    if conversation is None:
+                        await ws.send_json({"type": "status", "message": "Voice not available"})
+                        continue
+                    if conversation.busy:
+                        await ws.send_json({"type": "status", "message": "Already listening..."})
+                        continue
+
+                    async def send_status(msg: str):
+                        await ws.send_json({"type": "status", "message": msg})
+
+                    # Run conversation in background so WebSocket stays responsive
+                    asyncio.create_task(
+                        _run_conversation(conversation, ws, send_status, voice=True)
+                    )
+
+                elif msg_type == "text":
+                    # Text input from chat box
+                    text = data.get("text", "").strip()
+                    if not text:
+                        continue
+                    if conversation is None:
+                        await ws.send_json({"type": "status", "message": "Brain not available"})
+                        continue
+                    if conversation.busy:
+                        await ws.send_json({"type": "status", "message": "Still thinking..."})
+                        continue
+
+                    async def send_status_text(msg: str):
+                        await ws.send_json({"type": "status", "message": msg})
+
+                    asyncio.create_task(
+                        _run_conversation(
+                            conversation, ws, send_status_text, voice=False, text=text
+                        )
+                    )
+
                 else:
                     logger.warning("Unknown WebSocket message type: %s", msg_type)
         except WebSocketDisconnect:
@@ -72,3 +115,26 @@ def create_app(
             await bus.publish(Events.MOTOR_COMMAND, MotorCommand(0, 0))
 
     return app
+
+
+async def _run_conversation(
+    conversation: ConversationManager,
+    ws: WebSocket,
+    status_callback,
+    voice: bool = True,
+    text: str = "",
+) -> None:
+    """Run a conversation interaction and send results to the WebSocket."""
+    try:
+        if voice:
+            result = await conversation.handle_voice_interaction(status_callback)
+        else:
+            result = await conversation.handle_text_interaction(text, status_callback)
+
+        await ws.send_json({"type": "conversation_result", **result})
+    except Exception as e:
+        logger.error("Conversation task error: %s", e)
+        try:
+            await ws.send_json({"type": "status", "message": "Error occurred"})
+        except Exception:
+            pass

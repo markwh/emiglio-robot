@@ -18,6 +18,19 @@
             <div id="camera-overlay" class="hidden">No camera</div>
         </section>
 
+        <section id="voice-section">
+            <button id="talk-btn">TALK</button>
+            <div id="voice-status">Ready</div>
+        </section>
+
+        <section id="chat-section">
+            <div id="chat-log"></div>
+            <form id="chat-form">
+                <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off">
+                <button type="submit" id="chat-send">Send</button>
+            </form>
+        </section>
+
         <section id="joystick-section">
             <canvas id="joystick" width="200" height="200"></canvas>
             <div id="motor-readout">L: 0.00 | R: 0.00</div>
