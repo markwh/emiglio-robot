@@ -5,7 +5,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir fastapi uvicorn[standard] openai-whisper
+RUN pip install --no-cache-dir fastapi uvicorn[standard] python-multipart openai-whisper
 
 COPY app.py .
 
