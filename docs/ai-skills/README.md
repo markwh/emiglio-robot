@@ -6,6 +6,7 @@ Research and experiments for Emiglio's AI capabilities.
 
 - [personality.md](prompts/personality.md) — Character design document (retro-optimist archetype)
 - [system-prompt-v2.md](prompts/system-prompt-v2.md) — Improved system prompt with rationale
+- [system-prompt-v3.md](prompts/system-prompt-v3.md) — Tool-calling edition (removes COMMANDS section, uses LangChain tools)
 
 ## Notebooks
 

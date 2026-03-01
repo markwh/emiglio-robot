@@ -1,47 +1,31 @@
-"""Brain service using Claude API for robot intelligence."""
+"""Brain service using LangGraph agent for robot intelligence."""
 
 import logging
 import os
 from contextlib import asynccontextmanager
 
-from anthropic import Anthropic
 from fastapi import FastAPI
+from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
+
+from graph import build_agent, extract_commands, extract_reply
 
 logger = logging.getLogger(__name__)
 
-client: Anthropic | None = None
-
-SYSTEM_PROMPT = """You are Emiglio, a friendly vintage robot from the 1980s brought back to life \
-with modern AI. You live in a home and help your owner. You can move around, see through your \
-camera, and hear through your microphone.
-
-When responding, you may include commands in your response using this format:
-[COMMAND:action:parameters]
-
-Available commands:
-- [COMMAND:move:forward] - move forward briefly
-- [COMMAND:move:backward] - move backward briefly
-- [COMMAND:move:left] - turn left
-- [COMMAND:move:right] - turn right
-- [COMMAND:move:stop] - stop moving
-- [COMMAND:speak:text] - speak the text (this is automatic for your response)
-
-Keep responses short and conversational (1-3 sentences). You have a playful, slightly retro \
-personality. You're helpful but also a bit cheeky."""
+agent = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global client
+    global agent
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
     if api_key:
-        client = Anthropic(api_key=api_key)
-        logger.info("Anthropic client initialized")
+        agent = build_agent(api_key)
+        logger.info("LangGraph agent initialized")
     else:
         logger.warning("No ANTHROPIC_API_KEY set — brain will return fallback responses")
     yield
-    client = None
+    agent = None
 
 
 app = FastAPI(title="Emiglio Brain", lifespan=lifespan)
@@ -57,41 +41,59 @@ class ThinkResponse(BaseModel):
     commands: list[dict]
 
 
-def parse_commands(text: str) -> tuple[str, list[dict]]:
-    """Extract [COMMAND:action:params] from response text."""
-    import re
-    commands = []
-    clean_text = text
+def _build_message(transcript: str, context: str) -> HumanMessage:
+    """Build a HumanMessage, with multimodal image content if context has base64 data."""
+    # Check if context contains a base64 JPEG camera frame
+    if context and "base64 JPEG:" in context:
+        # Extract the full base64 data from the context string
+        # Format: "[Camera frame available as base64 JPEG: <data>... (N chars total)]"
+        import re
 
-    for match in re.finditer(r'\[COMMAND:(\w+):([^\]]+)\]', text):
-        action = match.group(1)
-        params = match.group(2)
-        commands.append({"action": action, "params": params})
-        clean_text = clean_text.replace(match.group(0), "")
+        match = re.search(
+            r"\[Camera frame available as base64 JPEG: (.+?)\.\.\. \((\d+) chars total\)\]",
+            context,
+        )
+        if match:
+            # The context only has the first 100 chars — we can't reconstruct the image.
+            # But if the full base64 is ever passed, handle it properly.
+            # For now, mention the camera context as text since Pi truncates.
+            return HumanMessage(
+                content=f"[You can see through your camera but the image data is not available in this request.]\n\nUser said: {transcript}"
+            )
 
-    return clean_text.strip(), commands
+    if context:
+        return HumanMessage(content=f"[Context: {context}]\n\nUser said: {transcript}")
+
+    return HumanMessage(content=transcript)
+
+
+def _build_multimodal_message(transcript: str, base64_jpeg: str) -> HumanMessage:
+    """Build a multimodal HumanMessage with an actual image for vision."""
+    return HumanMessage(
+        content=[
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{base64_jpeg}"},
+            },
+            {"type": "text", "text": f"User said: {transcript}"},
+        ]
+    )
 
 
 @app.post("/think", response_model=ThinkResponse)
 async def think(req: ThinkRequest):
     """Process a transcript and return a response with optional commands."""
-    if client is None:
+    if agent is None:
         reply = f"I heard you say: {req.transcript}. But my brain isn't connected yet!"
         return ThinkResponse(reply=reply, commands=[])
 
-    messages = [{"role": "user", "content": req.transcript}]
-    if req.context:
-        messages[0]["content"] = f"[Context: {req.context}]\n\nUser said: {req.transcript}"
+    message = _build_message(req.transcript, req.context)
 
-    response = client.messages.create(
-        model="claude-sonnet-4-5-20250929",
-        max_tokens=256,
-        system=SYSTEM_PROMPT,
-        messages=messages,
-    )
+    result = await agent.ainvoke({"messages": [message]})
+    messages = result["messages"]
 
-    raw_reply = response.content[0].text
-    reply, commands = parse_commands(raw_reply)
+    reply = extract_reply(messages)
+    commands = extract_commands(messages)
 
     logger.info("Brain reply: %s (commands: %s)", reply, commands)
     return ThinkResponse(reply=reply, commands=commands)
@@ -99,4 +101,4 @@ async def think(req: ThinkRequest):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "api_configured": client is not None}
+    return {"status": "ok", "api_configured": agent is not None}

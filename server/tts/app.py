@@ -1,32 +1,37 @@
-"""Text-to-speech service using Piper TTS."""
+"""Text-to-speech service using ElevenLabs API."""
 
 import io
 import logging
-import subprocess
+import os
 import wave
 from contextlib import asynccontextmanager
-from pathlib import Path
 
+from elevenlabs import AsyncElevenLabs
 from fastapi import FastAPI
 from fastapi.responses import Response
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
-MODEL_DIR = Path("/app/models")
-# Default voice — downloaded at build time
-MODEL_NAME = "en_US-lessac-medium"
-MODEL_PATH = MODEL_DIR / f"{MODEL_NAME}.onnx"
-MODEL_CONFIG = MODEL_DIR / f"{MODEL_NAME}.onnx.json"
+client: AsyncElevenLabs | None = None
+voice_id: str = ""
+model_id: str = ""
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if not MODEL_PATH.exists():
-        logger.error("Piper model not found at %s", MODEL_PATH)
+    global client, voice_id, model_id
+    api_key = os.environ.get("ELEVENLABS_API_KEY", "")
+    voice_id = os.environ.get("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")  # Rachel
+    model_id = os.environ.get("ELEVENLABS_MODEL_ID", "eleven_monolingual_v1")
+
+    if api_key:
+        client = AsyncElevenLabs(api_key=api_key)
+        logger.info("ElevenLabs client initialized (voice=%s, model=%s)", voice_id, model_id)
     else:
-        logger.info("Piper model ready: %s", MODEL_NAME)
+        logger.warning("No ELEVENLABS_API_KEY set — TTS will return 503")
     yield
+    client = None
 
 
 app = FastAPI(title="Emiglio TTS", lifespan=lifespan)
@@ -39,28 +44,22 @@ class SynthesizeRequest(BaseModel):
 @app.post("/synthesize")
 async def synthesize(req: SynthesizeRequest):
     """Convert text to speech, return WAV audio bytes."""
-    if not MODEL_PATH.exists():
-        return Response(content="Model not found", status_code=503)
+    if client is None:
+        return Response(content="ElevenLabs API key not configured", status_code=503)
 
-    # Run piper CLI and capture raw PCM output
-    proc = subprocess.run(
-        [
-            "piper",
-            "--model", str(MODEL_PATH),
-            "--config", str(MODEL_CONFIG),
-            "--output_raw",
-        ],
-        input=req.text.encode(),
-        capture_output=True,
-        timeout=30,
-    )
+    # Get PCM audio from ElevenLabs (16-bit mono 22050Hz)
+    raw_chunks = []
+    async for chunk in client.text_to_speech.convert(
+        text=req.text,
+        voice_id=voice_id,
+        model_id=model_id,
+        output_format="pcm_22050",
+    ):
+        raw_chunks.append(chunk)
 
-    if proc.returncode != 0:
-        logger.error("Piper failed: %s", proc.stderr.decode())
-        return Response(content="TTS failed", status_code=500)
+    raw_audio = b"".join(raw_chunks)
 
     # Wrap raw PCM (16-bit mono 22050Hz) in a WAV container
-    raw_audio = proc.stdout
     wav_buffer = io.BytesIO()
     with wave.open(wav_buffer, "wb") as wf:
         wf.setnchannels(1)
@@ -77,4 +76,9 @@ async def synthesize(req: SynthesizeRequest):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "model": MODEL_NAME, "model_exists": MODEL_PATH.exists()}
+    return {
+        "status": "ok",
+        "api_configured": client is not None,
+        "voice_id": voice_id,
+        "model_id": model_id,
+    }

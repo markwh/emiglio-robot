@@ -2,9 +2,9 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir fastapi uvicorn[standard] anthropic
+RUN pip install --no-cache-dir fastapi uvicorn[standard] langchain-anthropic langgraph
 
-COPY app.py .
+COPY *.py .
 
 EXPOSE 8003
 

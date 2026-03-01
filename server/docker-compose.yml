@@ -9,6 +9,10 @@ services:
     build: ./tts
     ports:
       - "8002:8002"
+    environment:
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - ELEVENLABS_VOICE_ID=${ELEVENLABS_VOICE_ID:-21m00Tcm4TlvDq8ikWAM}
+      - ELEVENLABS_MODEL_ID=${ELEVENLABS_MODEL_ID:-eleven_monolingual_v1}
     restart: unless-stopped
 
   brain:
