@@ -21,6 +21,19 @@ class Settings(BaseSettings):
     web_host: str = "0.0.0.0"
     web_port: int = 8080
 
+    # STT mode: "inline" (local whisper) or "server" (HTTP to Docker service)
+    stt_mode: str = "inline"
+    stt_model: str = "base"
+
+    # TTS mode: "inline" (direct ElevenLabs API) or "server" (HTTP to Docker service)
+    tts_mode: str = "inline"
+    tts_voice_id: str = "21m00Tcm4TlvDq8ikWAM"  # Rachel
+    tts_model_id: str = "eleven_flash_v2_5"
+
+    # Brain mode: "inline" (direct API call) or "server" (HTTP to Docker service)
+    brain_mode: str = "inline"
+    brain_model: str = "claude-sonnet-4-5-20250929"
+
     # Server (home server) URLs
     server_stt_url: str = "http://localhost:8001"
     server_tts_url: str = "http://localhost:8002"

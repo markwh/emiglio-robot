@@ -13,32 +13,130 @@
     </header>
 
     <main>
-        <section id="camera-section">
-            <img id="camera-feed" src="/stream" alt="Camera feed">
-            <div id="camera-overlay" class="hidden">No camera</div>
+        <section id="simulator-section">
+            <div id="sim-header">
+                <span class="section-title">Virtual Robot</span>
+                <div id="sim-controls">
+                    <button id="sim-reset">Reset</button>
+                    <label id="trail-toggle"><input type="checkbox" id="sim-trail" checked> Trail</label>
+                </div>
+            </div>
+            <div id="sim-body">
+                <canvas id="sim-canvas" width="500" height="500"></canvas>
+                <div id="sim-panel">
+                    <div id="motor-gauges">
+                        <span class="panel-label">Motors</span>
+                        <div class="gauge-row">
+                            <span class="gauge-label">L</span>
+                            <div class="gauge-track">
+                                <div class="gauge-center"></div>
+                                <div class="gauge-fill" id="gauge-left"></div>
+                            </div>
+                            <span class="gauge-val" id="gauge-left-val">0.00</span>
+                        </div>
+                        <div class="gauge-row">
+                            <span class="gauge-label">R</span>
+                            <div class="gauge-track">
+                                <div class="gauge-center"></div>
+                                <div class="gauge-fill" id="gauge-right"></div>
+                            </div>
+                            <span class="gauge-val" id="gauge-right-val">0.00</span>
+                        </div>
+                    </div>
+                    <div id="subsystem-status">
+                        <span class="panel-label">Subsystems</span>
+                        <div class="subsys-item"><span class="dot off" id="sub-motors"></span> Motors</div>
+                        <div class="subsys-item"><span class="dot off" id="sub-camera"></span> Camera</div>
+                        <div class="subsys-item"><span class="dot off" id="sub-audio"></span> Audio</div>
+                        <div class="subsys-item"><span class="dot off" id="sub-brain"></span> Brain</div>
+                    </div>
+                    <div id="event-log">
+                        <span class="panel-label">Event Log</span>
+                        <div id="event-list"></div>
+                    </div>
+                </div>
+            </div>
         </section>
 
-        <section id="voice-section">
-            <button id="talk-btn">TALK</button>
-            <div id="voice-status">Ready</div>
-        </section>
+        <div id="controls-panel">
+            <section id="joystick-section">
+                <canvas id="joystick" width="200" height="200"></canvas>
+                <div id="motor-readout">L: 0.00 | R: 0.00</div>
+            </section>
 
-        <section id="chat-section">
-            <div id="chat-log"></div>
-            <form id="chat-form">
-                <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off">
-                <button type="submit" id="chat-send">Send</button>
-            </form>
-        </section>
+            <section id="controls">
+                <button id="stop-btn">STOP</button>
+            </section>
 
-        <section id="joystick-section">
-            <canvas id="joystick" width="200" height="200"></canvas>
-            <div id="motor-readout">L: 0.00 | R: 0.00</div>
-        </section>
+            <section id="skills-section">
+                <span class="section-title">Skills</span>
+                <div id="skill-buttons">
+                    <button class="skill-btn" data-skill="spin">Spin</button>
+                    <button class="skill-btn" data-skill="wiggle">Wiggle</button>
+                    <button class="skill-btn" data-skill="dance">Dance</button>
+                </div>
+                <div id="skill-params">
+                    <div class="skill-param-row">
+                        <label for="skill-speed">Speed</label>
+                        <input type="range" id="skill-speed" min="10" max="100" step="10" value="100">
+                        <span id="skill-speed-val">1.0</span>
+                    </div>
+                    <div class="skill-param-row">
+                        <label for="skill-duration">Duration</label>
+                        <input type="range" id="skill-duration" min="5" max="50" step="5" value="10">
+                        <span id="skill-duration-val">1.0s</span>
+                    </div>
+                </div>
+            </section>
 
-        <section id="controls">
-            <button id="stop-btn">STOP</button>
-        </section>
+            <section id="camera-section">
+                <div id="camera-toolbar">
+                    <select id="camera-select"><option>Loading...</option></select>
+                </div>
+                <img id="camera-feed" src="/stream" alt="Camera feed">
+                <div id="camera-overlay" class="hidden">No camera</div>
+            </section>
+
+            <section id="voice-section">
+                <button id="talk-btn">TALK</button>
+                <button id="test-speaker-btn" title="Play a test tone to check your speaker">Test Speaker</button>
+                <div id="voice-status">Ready</div>
+            </section>
+
+            <section id="voicelab-section">
+                <div class="voicelab-header">
+                    <span class="section-title">Voice Lab</span>
+                </div>
+                <div class="voicelab-controls">
+                    <div class="voicelab-select-row">
+                        <select id="voicelab-select"><option>Loading voices...</option></select>
+                        <button id="voicelab-refresh" title="Refresh voice list">Refresh</button>
+                    </div>
+                    <div id="voicelab-meta" class="voicelab-meta">
+                        <div id="voicelab-name" class="voicelab-name"></div>
+                        <div id="voicelab-labels" class="voicelab-labels"></div>
+                        <div id="voicelab-desc" class="voicelab-desc"></div>
+                    </div>
+                    <div class="voicelab-sample-row">
+                        <input type="text" id="voicelab-text" value="Hello! I am Emiglio, your friendly robot companion." placeholder="Sample text...">
+                    </div>
+                    <div class="voicelab-actions">
+                        <button id="voicelab-preview-btn">Preview</button>
+                        <button id="voicelab-activate-btn">Set as Active</button>
+                        <span id="voicelab-status"></span>
+                    </div>
+                </div>
+                <audio id="voicelab-audio" style="display:none;"></audio>
+            </section>
+
+            <section id="chat-section">
+                <div id="chat-log"></div>
+                <form id="chat-form">
+                    <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off">
+                    <button type="submit" id="chat-send">Send</button>
+                </form>
+            </section>
+        </div>
     </main>
 
     <script src="/static/app.js"></script>

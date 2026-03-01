@@ -47,8 +47,276 @@ header h1 {
 
 main {
     width: 100%;
-    max-width: 500px;
+    max-width: 900px;
     padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+/* ---- Simulator ---- */
+
+#simulator-section {
+    width: 100%;
+}
+
+#sim-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #00d4ff;
+}
+
+#sim-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+#sim-reset {
+    padding: 0.3rem 0.75rem;
+    font-size: 0.8rem;
+    background: #0f3460;
+    color: #00d4ff;
+    border: 1px solid #0f3460;
+    border-radius: 0.35rem;
+    cursor: pointer;
+}
+
+#sim-reset:hover {
+    background: #16213e;
+}
+
+#trail-toggle {
+    font-size: 0.8rem;
+    color: #888;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+#sim-body {
+    display: flex;
+    gap: 1rem;
+    width: 100%;
+}
+
+#sim-canvas {
+    background: #0a0a1a;
+    border: 2px solid #0f3460;
+    border-radius: 0.5rem;
+    max-width: 100%;
+    height: auto;
+    flex-shrink: 0;
+}
+
+/* Side panel next to canvas */
+#sim-panel {
+    flex: 1;
+    min-width: 180px;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.panel-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.4rem;
+}
+
+/* Motor gauges */
+#motor-gauges {
+    background: #16213e;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+}
+
+.gauge-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+}
+
+.gauge-row:last-child {
+    margin-bottom: 0;
+}
+
+.gauge-label {
+    font-family: monospace;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #aaa;
+    width: 1rem;
+    text-align: center;
+}
+
+.gauge-track {
+    flex: 1;
+    height: 16px;
+    background: #0a0a1a;
+    border-radius: 3px;
+    position: relative;
+    overflow: hidden;
+}
+
+.gauge-center {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #444;
+    transform: translateX(-1px);
+    z-index: 1;
+}
+
+.gauge-fill {
+    position: absolute;
+    top: 2px;
+    height: calc(100% - 4px);
+    border-radius: 2px;
+    transition: left 0.05s, width 0.05s;
+    left: 50%;
+    width: 0;
+}
+
+.gauge-fill.forward {
+    background: #00c853;
+}
+
+.gauge-fill.backward {
+    background: #ff5252;
+}
+
+.gauge-val {
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: #888;
+    width: 3rem;
+    text-align: right;
+}
+
+/* Subsystem status */
+#subsystem-status {
+    background: #16213e;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+}
+
+.subsys-item {
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.25rem;
+    color: #aaa;
+}
+
+.subsys-item:last-child {
+    margin-bottom: 0;
+}
+
+.dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.dot.on {
+    background: #00c853;
+    box-shadow: 0 0 4px #00c853;
+}
+
+.dot.off {
+    background: #555;
+}
+
+/* Event log */
+#event-log {
+    background: #16213e;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+#event-list {
+    flex: 1;
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 0.72rem;
+    line-height: 1.6;
+    color: #888;
+}
+
+#event-list:empty::before {
+    content: "Events will appear here...";
+    color: #445;
+}
+
+.event-entry {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.event-time {
+    color: #556;
+    margin-right: 0.4rem;
+}
+
+.event-name {
+    color: #00d4ff;
+    margin-right: 0.4rem;
+}
+
+.event-detail {
+    color: #aaa;
+}
+
+/* Mobile: stack canvas and panel */
+@media (max-width: 700px) {
+    #sim-body {
+        flex-direction: column;
+    }
+
+    #sim-canvas {
+        width: 100%;
+    }
+
+    #sim-panel {
+        min-width: auto;
+    }
+
+    #event-list {
+        max-height: 120px;
+    }
+}
+
+/* ---- Controls panel (existing sections) ---- */
+
+#controls-panel {
+    width: 100%;
+    max-width: 500px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -67,6 +335,39 @@ main {
     font-size: 0.9rem;
     position: relative;
     overflow: hidden;
+}
+
+#camera-toolbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    padding: 0.4rem;
+    background: rgba(10, 10, 26, 0.75);
+    border-radius: 0.5rem 0.5rem 0 0;
+}
+
+#camera-select {
+    width: 100%;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.8rem;
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #16213e;
+    color: #00d4ff;
+    border: 1px solid #0f3460;
+    border-radius: 0.35rem;
+    outline: none;
+    cursor: pointer;
+}
+
+#camera-select:focus {
+    border-color: #00d4ff;
+}
+
+#camera-select:disabled {
+    color: #556;
+    cursor: wait;
 }
 
 #camera-feed {
@@ -120,6 +421,27 @@ main {
 #talk-btn:disabled {
     background: #555;
     cursor: not-allowed;
+}
+
+#test-speaker-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: #0f3460;
+    color: #00d4ff;
+    border: 1px solid #0f3460;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+#test-speaker-btn:hover {
+    background: #16213e;
+}
+
+#test-speaker-btn:disabled {
+    color: #556;
+    cursor: wait;
 }
 
 #voice-status {
@@ -246,4 +568,282 @@ main {
 
 #stop-btn:active {
     background: #d32f2f;
+}
+
+/* ---- Skills ---- */
+
+#skills-section {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+#skill-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.skill-btn {
+    padding: 0.6rem 1.25rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    background: #0f3460;
+    color: #00d4ff;
+    border: 1px solid #0f3460;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    flex: 1;
+    max-width: 140px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: background 0.15s, color 0.15s;
+}
+
+.skill-btn:hover {
+    background: #16213e;
+}
+
+.skill-btn:active,
+.skill-btn.executing {
+    background: #ff9800;
+    color: #1a1a2e;
+    border-color: #ff9800;
+}
+
+.skill-btn:disabled {
+    background: #333;
+    color: #666;
+    border-color: #333;
+    cursor: not-allowed;
+}
+
+#skill-params {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.skill-param-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.skill-param-row label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #888;
+    width: 4.5rem;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.skill-param-row input[type="range"] {
+    flex: 1;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: #16213e;
+    border-radius: 3px;
+    outline: none;
+}
+
+.skill-param-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #00d4ff;
+    cursor: pointer;
+}
+
+.skill-param-row input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #00d4ff;
+    cursor: pointer;
+    border: none;
+}
+
+.skill-param-row span {
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: #888;
+    width: 2.5rem;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+/* ---- Voice Lab ---- */
+
+#voicelab-section {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.voicelab-header {
+    display: flex;
+    align-items: center;
+}
+
+.voicelab-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.voicelab-select-row {
+    display: flex;
+    gap: 0.5rem;
+}
+
+#voicelab-select {
+    flex: 1;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.85rem;
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #16213e;
+    color: #00d4ff;
+    border: 1px solid #0f3460;
+    border-radius: 0.35rem;
+    outline: none;
+    cursor: pointer;
+}
+
+#voicelab-select:focus {
+    border-color: #00d4ff;
+}
+
+#voicelab-refresh {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+    background: #0f3460;
+    color: #00d4ff;
+    border: 1px solid #0f3460;
+    border-radius: 0.35rem;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+#voicelab-refresh:hover {
+    background: #16213e;
+}
+
+.voicelab-meta {
+    background: #16213e;
+    border-radius: 0.5rem;
+    padding: 0.6rem 0.75rem;
+    min-height: 2.5rem;
+}
+
+.voicelab-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #e0e0e0;
+    margin-bottom: 0.3rem;
+}
+
+.voicelab-labels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-bottom: 0.3rem;
+}
+
+.voicelab-label-tag {
+    display: inline-block;
+    padding: 0.1rem 0.45rem;
+    font-size: 0.7rem;
+    background: #0f3460;
+    color: #00d4ff;
+    border-radius: 0.75rem;
+}
+
+.voicelab-desc {
+    font-size: 0.8rem;
+    color: #888;
+    line-height: 1.4;
+}
+
+.voicelab-sample-row {
+    display: flex;
+}
+
+#voicelab-text {
+    flex: 1;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.85rem;
+    background: #16213e;
+    color: #e0e0e0;
+    border: 1px solid #0f3460;
+    border-radius: 0.5rem;
+    outline: none;
+}
+
+#voicelab-text:focus {
+    border-color: #00d4ff;
+}
+
+.voicelab-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#voicelab-preview-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: #0f3460;
+    color: #00d4ff;
+    border: 1px solid #0f3460;
+    border-radius: 0.5rem;
+    cursor: pointer;
+}
+
+#voicelab-preview-btn:hover {
+    background: #16213e;
+}
+
+#voicelab-preview-btn:disabled {
+    color: #556;
+    cursor: wait;
+}
+
+#voicelab-activate-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: #0f3460;
+    color: #00d4ff;
+    border: 1px solid #0f3460;
+    border-radius: 0.5rem;
+    cursor: pointer;
+}
+
+#voicelab-activate-btn:hover {
+    background: #16213e;
+}
+
+#voicelab-activate-btn:disabled {
+    color: #556;
+    cursor: wait;
+}
+
+#voicelab-activate-btn.active-voice {
+    background: #00d4ff;
+    color: #1a1a2e;
+    border-color: #00d4ff;
+}
+
+#voicelab-status {
+    font-size: 0.8rem;
+    color: #888;
+    flex: 1;
 }

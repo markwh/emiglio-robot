@@ -9,9 +9,12 @@ import logging
 
 import httpx
 
+from emiglio.brain import BrainClient
 from emiglio.config import settings
 from emiglio.event_bus import EventBus
 from emiglio.models import Events, MotorCommand
+from emiglio.stt import STTClient
+from emiglio.tts import TTSClient
 from emiglio.vision.camera import Camera
 
 logger = logging.getLogger(__name__)
@@ -27,6 +30,18 @@ MOVE_PRESETS = {
 
 MOVE_DURATION = 1.0  # seconds to hold a movement command
 
+# Locomotion skill constants
+DEFAULT_SPEED_FACTOR = 1.0
+DEFAULT_MOVE_DURATION = 1.0
+COMPOUND_BASE_SPEED = 0.6
+COMPOUND_MOVES = {"spin", "wiggle", "dance"}
+
+# Clamp ranges
+MIN_SPEED = 0.1
+MAX_SPEED = 1.0
+MIN_DURATION = 0.1
+MAX_DURATION = 5.0
+
 
 class ConversationManager:
     """Ties together audio, STT, brain, TTS, and locomotion."""
@@ -37,11 +52,17 @@ class ConversationManager:
         camera: Camera | None = None,
         audio_capture=None,
         audio_playback=None,
+        brain: BrainClient | None = None,
+        stt: STTClient | None = None,
+        tts: TTSClient | None = None,
     ) -> None:
         self._bus = bus
         self._camera = camera
         self._capture = audio_capture
         self._playback = audio_playback
+        self._brain = brain
+        self._stt = stt
+        self._tts = tts
         self._client = httpx.AsyncClient(timeout=30.0)
         self._busy = False
 
@@ -80,11 +101,11 @@ class ConversationManager:
             await status(f'Heard: "{transcript}"')
 
             # 3. Build context (include camera frame if available)
-            context = await self._build_context()
+            context, image_base64 = await self._build_context()
 
             # 4. Send to brain
             await status("Thinking...")
-            brain_result = await self._think(transcript, context)
+            brain_result = await self._think(transcript, context, image_base64)
             reply = brain_result.get("reply", "")
             commands = brain_result.get("commands", [])
             await status(f'Emiglio: "{reply}"')
@@ -125,10 +146,10 @@ class ConversationManager:
                 await status_callback(msg)
 
         try:
-            context = await self._build_context()
+            context, image_base64 = await self._build_context()
 
             await status("Thinking...")
-            brain_result = await self._think(text, context)
+            brain_result = await self._think(text, context, image_base64)
             reply = brain_result.get("reply", "")
             commands = brain_result.get("commands", [])
             await status(f'Emiglio: "{reply}"')
@@ -153,24 +174,26 @@ class ConversationManager:
             self._busy = False
 
     async def _transcribe(self, wav_bytes: bytes) -> str:
-        """Call the STT server."""
-        try:
-            resp = await self._client.post(
-                f"{settings.server_stt_url}/transcribe",
-                files={"audio": ("audio.wav", wav_bytes, "audio/wav")},
-            )
-            resp.raise_for_status()
-            return resp.json().get("text", "").strip()
-        except Exception as e:
-            logger.error("STT request failed: %s", e)
-            return ""
+        """Transcribe audio via STTClient or direct HTTP fallback."""
+        if self._stt is not None:
+            return await self._stt.transcribe(wav_bytes, server_url=settings.server_stt_url)
+        return ""
 
-    async def _think(self, transcript: str, context: str = "") -> dict:
-        """Call the brain server."""
+    async def _think(self, transcript: str, context: str = "", image_base64: str | None = None) -> dict:
+        """Call the brain (inline API or server, depending on config)."""
+        if self._brain is not None:
+            return await self._brain.think(
+                transcript, context, server_url=settings.server_brain_url,
+                image_base64=image_base64,
+            )
+        # Fallback: direct HTTP call (no BrainClient configured)
         try:
+            payload: dict = {"transcript": transcript, "context": context}
+            if image_base64:
+                payload["image_base64"] = image_base64
             resp = await self._client.post(
                 f"{settings.server_brain_url}/think",
-                json={"transcript": transcript, "context": context},
+                json=payload,
             )
             resp.raise_for_status()
             return resp.json()
@@ -179,52 +202,120 @@ class ConversationManager:
             return {"reply": "Sorry, my brain isn't responding right now.", "commands": []}
 
     async def _synthesize(self, text: str) -> bytes | None:
-        """Call the TTS server."""
-        try:
-            resp = await self._client.post(
-                f"{settings.server_tts_url}/synthesize",
-                json={"text": text},
-            )
-            resp.raise_for_status()
-            return resp.content
-        except Exception as e:
-            logger.error("TTS request failed: %s", e)
-            return None
+        """Synthesize speech via TTSClient."""
+        if self._tts is not None:
+            return await self._tts.synthesize(text, server_url=settings.server_tts_url)
+        return None
 
-    async def _build_context(self) -> str:
-        """Build context string, optionally including camera description."""
+    async def _build_context(self) -> tuple[str, str | None]:
+        """Build context, returning (text_context, image_base64 or None)."""
         if self._camera is None:
-            return ""
+            return "", None
         jpeg = self._camera.get_jpeg()
         if jpeg is None:
-            return ""
-        b64 = base64.b64encode(jpeg).decode()
-        return f"[Camera frame available as base64 JPEG: {b64[:100]}... ({len(b64)} chars total)]"
+            return "", None
+        image_b64 = base64.b64encode(jpeg).decode()
+        return "[Camera frame attached]", image_b64
 
     async def _execute_command(self, cmd: dict) -> None:
         """Execute a brain command by publishing to the event bus."""
         action = cmd.get("action", "")
         params = cmd.get("params", "")
 
-        if action == "move":
-            speeds = MOVE_PRESETS.get(params)
-            if speeds:
-                logger.info("Executing move: %s", params)
+        if action != "move":
+            logger.warning("Unknown command action: %s", action)
+            return
+
+        # Extract and clamp speed/duration
+        speed_factor = max(MIN_SPEED, min(MAX_SPEED, cmd.get("speed", DEFAULT_SPEED_FACTOR)))
+        duration = max(MIN_DURATION, min(MAX_DURATION, cmd.get("duration", DEFAULT_MOVE_DURATION)))
+
+        if params in COMPOUND_MOVES:
+            await self._execute_compound(params, speed_factor, duration)
+        elif params in MOVE_PRESETS:
+            await self._execute_simple(params, speed_factor, duration)
+        else:
+            logger.warning("Unknown move direction: %s", params)
+
+    async def _execute_simple(self, params: str, speed_factor: float, duration: float) -> None:
+        """Execute a basic directional move with speed scaling."""
+        base_left, base_right = MOVE_PRESETS[params]
+        left = max(-1.0, min(1.0, base_left * speed_factor))
+        right = max(-1.0, min(1.0, base_right * speed_factor))
+
+        logger.info("Executing move: %s (speed=%.2f, duration=%.1fs)", params, speed_factor, duration)
+        await self._bus.publish(
+            Events.MOTOR_COMMAND,
+            MotorCommand(left=left, right=right),
+        )
+        if params != "stop":
+            await asyncio.sleep(duration)
+            await self._bus.publish(
+                Events.MOTOR_COMMAND,
+                MotorCommand(left=0, right=0),
+            )
+
+    async def _execute_compound(self, params: str, speed_factor: float, duration: float) -> None:
+        """Execute a compound expressive movement."""
+        if params == "spin":
+            await self._execute_spin(speed_factor, duration)
+        elif params == "wiggle":
+            await self._execute_wiggle(speed_factor, duration)
+        elif params == "dance":
+            await self._execute_dance(speed_factor, duration)
+
+    async def _execute_spin(self, speed_factor: float, duration: float) -> None:
+        """Spin in place: left forward, right backward."""
+        spd = COMPOUND_BASE_SPEED * speed_factor
+        left = max(-1.0, min(1.0, spd))
+        right = max(-1.0, min(1.0, -spd))
+        logger.info("Executing spin (speed=%.2f, duration=%.1fs)", speed_factor, duration)
+        await self._bus.publish(
+            Events.MOTOR_COMMAND,
+            MotorCommand(left=left, right=right),
+        )
+        await asyncio.sleep(duration)
+        await self._bus.publish(
+            Events.MOTOR_COMMAND,
+            MotorCommand(left=0, right=0),
+        )
+
+    async def _execute_wiggle(self, speed_factor: float, duration: float) -> None:
+        """Wiggle: alternating quick left/right pivots."""
+        step = 0.2
+        spd = COMPOUND_BASE_SPEED * speed_factor
+        left_spd = max(-1.0, min(1.0, spd))
+        elapsed = 0.0
+        go_left = True
+        logger.info("Executing wiggle (speed=%.2f, duration=%.1fs)", speed_factor, duration)
+        while elapsed < duration:
+            t = min(step, duration - elapsed)
+            if go_left:
                 await self._bus.publish(
                     Events.MOTOR_COMMAND,
-                    MotorCommand(left=speeds[0], right=speeds[1]),
+                    MotorCommand(left=-left_spd, right=left_spd),
                 )
-                # Hold the movement briefly then stop
-                if params != "stop":
-                    await asyncio.sleep(MOVE_DURATION)
-                    await self._bus.publish(
-                        Events.MOTOR_COMMAND,
-                        MotorCommand(left=0, right=0),
-                    )
             else:
-                logger.warning("Unknown move direction: %s", params)
-        else:
-            logger.warning("Unknown command action: %s", action)
+                await self._bus.publish(
+                    Events.MOTOR_COMMAND,
+                    MotorCommand(left=left_spd, right=-left_spd),
+                )
+            await asyncio.sleep(t)
+            elapsed += t
+            go_left = not go_left
+        await self._bus.publish(
+            Events.MOTOR_COMMAND,
+            MotorCommand(left=0, right=0),
+        )
+
+    async def _execute_dance(self, speed_factor: float, duration: float) -> None:
+        """Dance: forward, spin, wiggle, backward — each a quarter of total duration."""
+        quarter = duration / 4.0
+        logger.info("Executing dance (speed=%.2f, duration=%.1fs)", speed_factor, duration)
+        await self._execute_simple("forward", speed_factor, quarter)
+        await self._execute_spin(speed_factor, quarter)
+        await self._execute_wiggle(speed_factor, quarter)
+        await self._execute_simple("backward", speed_factor, quarter)
 
     async def close(self) -> None:
         await self._client.aclose()
