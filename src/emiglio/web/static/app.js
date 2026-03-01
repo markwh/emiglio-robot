@@ -17,6 +17,7 @@
   const ctx = canvas.getContext("2d");
   const stopBtn = document.getElementById("stop-btn");
   const talkBtn = document.getElementById("talk-btn");
+  const testSpeakerBtn = document.getElementById("test-speaker-btn");
   const voiceStatus = document.getElementById("voice-status");
   const chatLog = document.getElementById("chat-log");
   const chatForm = document.getElementById("chat-form");
@@ -493,6 +494,23 @@
 
   // Talk button
   talkBtn.addEventListener("click", sendTalk);
+
+  // Test speaker button
+  testSpeakerBtn.addEventListener("click", async () => {
+    testSpeakerBtn.disabled = true;
+    voiceStatus.textContent = "Playing test tone...";
+    try {
+      const resp = await fetch("/audio/test", { method: "POST" });
+      const data = await resp.json();
+      voiceStatus.textContent = data.ok ? data.message : `Speaker test failed: ${data.error}`;
+      addEventEntry("audio", data.ok ? "Speaker test OK" : `Speaker test failed: ${data.error}`);
+    } catch (e) {
+      voiceStatus.textContent = `Speaker test error: ${e.message}`;
+      addEventEntry("audio", `Speaker test error: ${e.message}`);
+    } finally {
+      testSpeakerBtn.disabled = false;
+    }
+  });
 
   // Chat form
   chatForm.addEventListener("submit", (e) => {

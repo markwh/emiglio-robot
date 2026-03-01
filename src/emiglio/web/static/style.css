@@ -423,6 +423,27 @@ main {
     cursor: not-allowed;
 }
 
+#test-speaker-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: #0f3460;
+    color: #00d4ff;
+    border: 1px solid #0f3460;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+#test-speaker-btn:hover {
+    background: #16213e;
+}
+
+#test-speaker-btn:disabled {
+    color: #556;
+    cursor: wait;
+}
+
 #voice-status {
     font-size: 0.85rem;
     color: #888;

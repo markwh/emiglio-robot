@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     stt_mode: str = "inline"
     stt_model: str = "base"
 
+    # TTS mode: "inline" (direct ElevenLabs API) or "server" (HTTP to Docker service)
+    tts_mode: str = "inline"
+    tts_voice_id: str = "21m00Tcm4TlvDq8ikWAM"  # Rachel
+    tts_model_id: str = "eleven_flash_v2_5"
+
     # Brain mode: "inline" (direct API call) or "server" (HTTP to Docker service)
     brain_mode: str = "inline"
     brain_model: str = "claude-sonnet-4-5-20250929"

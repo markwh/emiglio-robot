@@ -14,6 +14,7 @@ from emiglio.config import settings
 from emiglio.event_bus import EventBus
 from emiglio.models import Events, MotorCommand
 from emiglio.stt import STTClient
+from emiglio.tts import TTSClient
 from emiglio.vision.camera import Camera
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,7 @@ class ConversationManager:
         audio_playback=None,
         brain: BrainClient | None = None,
         stt: STTClient | None = None,
+        tts: TTSClient | None = None,
     ) -> None:
         self._bus = bus
         self._camera = camera
@@ -48,6 +50,7 @@ class ConversationManager:
         self._playback = audio_playback
         self._brain = brain
         self._stt = stt
+        self._tts = tts
         self._client = httpx.AsyncClient(timeout=30.0)
         self._busy = False
 
@@ -187,17 +190,10 @@ class ConversationManager:
             return {"reply": "Sorry, my brain isn't responding right now.", "commands": []}
 
     async def _synthesize(self, text: str) -> bytes | None:
-        """Call the TTS server."""
-        try:
-            resp = await self._client.post(
-                f"{settings.server_tts_url}/synthesize",
-                json={"text": text},
-            )
-            resp.raise_for_status()
-            return resp.content
-        except Exception as e:
-            logger.error("TTS request failed: %s", e)
-            return None
+        """Synthesize speech via TTSClient."""
+        if self._tts is not None:
+            return await self._tts.synthesize(text, server_url=settings.server_tts_url)
+        return None
 
     async def _build_context(self) -> tuple[str, str | None]:
         """Build context, returning (text_context, image_base64 or None)."""
