@@ -10,6 +10,8 @@ from emiglio.brain import BrainClient
 from emiglio.config import settings
 from emiglio.event_bus import EventBus
 from emiglio.locomotion.controller import LocomotionController
+from emiglio.stt import STTClient
+from emiglio.tts import TTSClient
 from emiglio.vision.camera import Camera
 from emiglio.conversation import ConversationManager
 from emiglio.web.server import create_app
@@ -55,6 +57,16 @@ def main() -> None:
     except OSError as e:
         logger.warning("Audio subsystem unavailable: %s", e)
 
+    # -- STT --
+    stt = STTClient(mode=settings.stt_mode, model=settings.stt_model)
+
+    # -- TTS --
+    tts = TTSClient(
+        mode=settings.tts_mode,
+        voice_id=settings.tts_voice_id,
+        model_id=settings.tts_model_id,
+    )
+
     # -- Brain --
     brain = BrainClient(mode=settings.brain_mode, model=settings.brain_model)
 
@@ -65,6 +77,8 @@ def main() -> None:
         audio_capture=audio_capture,
         audio_playback=audio_playback,
         brain=brain,
+        stt=stt,
+        tts=tts,
     )
 
     # -- Web app --
@@ -90,6 +104,8 @@ def main() -> None:
     subsystems.append("motors (mock)" if settings.hardware_mode == "mock" else "motors (GPIO)")
     subsystems.append("camera" if camera._cap is not None else "camera (off)")
     subsystems.append("audio" if audio_capture else "audio (off)")
+    subsystems.append(f"stt ({settings.stt_mode})" if stt.available else "stt (off)")
+    subsystems.append(f"tts ({settings.tts_mode})" if tts.available else "tts (off)")
     subsystems.append(f"brain ({settings.brain_mode})" if brain.available else "brain (off)")
     logger.info("Subsystems: %s", ", ".join(subsystems))
     logger.info("Web UI: http://%s:%d", settings.web_host, settings.web_port)

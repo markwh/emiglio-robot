@@ -1,8 +1,12 @@
 """FastAPI web server with WebSocket for real-time robot control."""
 
 import asyncio
+import io
 import json
 import logging
+import math
+import struct
+import wave
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -95,6 +99,41 @@ def create_app(
         except Exception as e:
             logger.error("Camera switch failed: %s", e)
             return {"error": str(e)}
+
+    @app.post("/audio/test")
+    async def audio_test():
+        """Play a short test tone to verify audio output works."""
+        if conversation is None or conversation._playback is None:
+            return {"ok": False, "error": "Audio playback not available"}
+        try:
+            wav_bytes = _generate_test_tone()
+            await conversation._playback.play_wav(wav_bytes)
+            return {"ok": True, "message": "Test tone played (440Hz, 0.5s)"}
+        except Exception as e:
+            logger.error("Audio test failed: %s", e)
+            return {"ok": False, "error": str(e)}
+
+    @app.post("/tts/test")
+    async def tts_test():
+        """Synthesize and play a short phrase to test the full TTS pipeline."""
+        if conversation is None:
+            return {"ok": False, "error": "Conversation manager not available"}
+        if conversation._tts is None or not conversation._tts.available:
+            return {"ok": False, "error": "TTS not available"}
+        if conversation._playback is None:
+            return {"ok": False, "error": "Audio playback not available"}
+        try:
+            from emiglio.config import settings
+            audio = await conversation._tts.synthesize(
+                "Hello, I am Emiglio.", server_url=settings.server_tts_url
+            )
+            if audio is None:
+                return {"ok": False, "error": "TTS returned no audio"}
+            await conversation._playback.play_wav(audio)
+            return {"ok": True, "message": "TTS test played successfully"}
+        except Exception as e:
+            logger.error("TTS test failed: %s", e)
+            return {"ok": False, "error": str(e)}
 
     @app.websocket("/ws")
     async def websocket_endpoint(ws: WebSocket):
@@ -207,3 +246,19 @@ async def _run_conversation(
             await ws.send_json({"type": "status", "message": "Error occurred"})
         except Exception:
             pass
+
+
+def _generate_test_tone(
+    freq: float = 440.0, duration: float = 0.5, sample_rate: int = 22050, volume: float = 0.5
+) -> bytes:
+    """Generate a WAV sine wave tone for audio testing."""
+    n_samples = int(sample_rate * duration)
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(sample_rate)
+        for i in range(n_samples):
+            sample = int(volume * 32767 * math.sin(2 * math.pi * freq * i / sample_rate))
+            wf.writeframes(struct.pack("<h", sample))
+    return buf.getvalue()

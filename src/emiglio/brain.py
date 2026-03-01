@@ -86,13 +86,13 @@ class BrainClient:
             return self._anthropic is not None
         return self._http is not None
 
-    async def think(self, transcript: str, context: str = "", server_url: str = "") -> dict:
+    async def think(self, transcript: str, context: str = "", server_url: str = "", image_base64: str | None = None) -> dict:
         """Send a transcript to the brain and return {"reply": ..., "commands": [...]}."""
         if self._mode == "inline":
-            return await self._think_inline(transcript, context)
-        return await self._think_server(transcript, context, server_url)
+            return await self._think_inline(transcript, context, image_base64)
+        return await self._think_server(transcript, context, server_url, image_base64)
 
-    async def _think_inline(self, transcript: str, context: str) -> dict:
+    async def _think_inline(self, transcript: str, context: str, image_base64: str | None = None) -> dict:
         """Call the Claude API directly."""
         if self._anthropic is None:
             return {
@@ -100,16 +100,28 @@ class BrainClient:
                 "commands": [],
             }
 
-        content = transcript
+        # Build multimodal content blocks
+        content_blocks: list[dict] = []
+        if image_base64:
+            content_blocks.append({
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": "image/jpeg",
+                    "data": image_base64,
+                },
+            })
+        text_part = transcript
         if context:
-            content = f"[Context: {context}]\n\nUser said: {transcript}"
+            text_part = f"[Context: {context}]\n\nUser said: {transcript}"
+        content_blocks.append({"type": "text", "text": text_part})
 
         try:
             response = await self._anthropic.messages.create(
                 model=self._model,
                 max_tokens=256,
                 system=SYSTEM_PROMPT,
-                messages=[{"role": "user", "content": content}],
+                messages=[{"role": "user", "content": content_blocks}],
             )
             raw_reply = response.content[0].text
             reply, commands = parse_commands(raw_reply)
@@ -122,15 +134,18 @@ class BrainClient:
                 "commands": [],
             }
 
-    async def _think_server(self, transcript: str, context: str, server_url: str) -> dict:
+    async def _think_server(self, transcript: str, context: str, server_url: str, image_base64: str | None = None) -> dict:
         """Call the brain HTTP server."""
         if self._http is None:
             return {"reply": "Brain HTTP client not initialized.", "commands": []}
 
         try:
+            payload: dict = {"transcript": transcript, "context": context}
+            if image_base64:
+                payload["image_base64"] = image_base64
             resp = await self._http.post(
                 f"{server_url}/think",
-                json={"transcript": transcript, "context": context},
+                json=payload,
             )
             resp.raise_for_status()
             return resp.json()

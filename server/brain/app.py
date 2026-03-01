@@ -34,6 +34,7 @@ app = FastAPI(title="Emiglio Brain", lifespan=lifespan)
 class ThinkRequest(BaseModel):
     transcript: str
     context: str = ""
+    image_base64: str | None = None
 
 
 class ThinkResponse(BaseModel):
@@ -42,28 +43,9 @@ class ThinkResponse(BaseModel):
 
 
 def _build_message(transcript: str, context: str) -> HumanMessage:
-    """Build a HumanMessage, with multimodal image content if context has base64 data."""
-    # Check if context contains a base64 JPEG camera frame
-    if context and "base64 JPEG:" in context:
-        # Extract the full base64 data from the context string
-        # Format: "[Camera frame available as base64 JPEG: <data>... (N chars total)]"
-        import re
-
-        match = re.search(
-            r"\[Camera frame available as base64 JPEG: (.+?)\.\.\. \((\d+) chars total\)\]",
-            context,
-        )
-        if match:
-            # The context only has the first 100 chars — we can't reconstruct the image.
-            # But if the full base64 is ever passed, handle it properly.
-            # For now, mention the camera context as text since Pi truncates.
-            return HumanMessage(
-                content=f"[You can see through your camera but the image data is not available in this request.]\n\nUser said: {transcript}"
-            )
-
+    """Build a text-only HumanMessage."""
     if context:
         return HumanMessage(content=f"[Context: {context}]\n\nUser said: {transcript}")
-
     return HumanMessage(content=transcript)
 
 
@@ -87,7 +69,10 @@ async def think(req: ThinkRequest):
         reply = f"I heard you say: {req.transcript}. But my brain isn't connected yet!"
         return ThinkResponse(reply=reply, commands=[])
 
-    message = _build_message(req.transcript, req.context)
+    if req.image_base64:
+        message = _build_multimodal_message(req.transcript, req.image_base64)
+    else:
+        message = _build_message(req.transcript, req.context)
 
     result = await agent.ainvoke({"messages": [message]})
     messages = result["messages"]

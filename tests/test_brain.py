@@ -6,7 +6,9 @@ inline brain client without making any API calls.
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 # Add the brain service directory to the path so we can import its modules
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "server" / "brain"))
@@ -180,9 +182,86 @@ def test_brain_client_server_mode():
 
 def test_brain_client_invalid_mode():
     """BrainClient raises ValueError for unknown mode."""
-    import pytest
     with pytest.raises(ValueError, match="Unknown brain_mode"):
         BrainClient(mode="banana")
+
+
+# --- Multimodal vision tests ---
+
+
+async def test_think_inline_with_image():
+    """_think_inline should send multimodal content blocks when image_base64 is provided."""
+    brain = BrainClient(mode="inline")
+    if brain._anthropic is None:
+        pytest.skip("No Anthropic client available")
+
+    mock_response = MagicMock()
+    mock_response.content = [MagicMock(text="I can see something.")]
+
+    brain._anthropic.messages.create = AsyncMock(return_value=mock_response)
+    result = await brain._think_inline("what do you see?", "", "base64data")
+    assert result["reply"] == "I can see something."
+
+    call_kwargs = brain._anthropic.messages.create.call_args.kwargs
+    content = call_kwargs["messages"][0]["content"]
+    assert isinstance(content, list)
+    assert content[0]["type"] == "image"
+    assert content[0]["source"]["data"] == "base64data"
+    assert content[1]["type"] == "text"
+
+
+async def test_think_inline_without_image():
+    """_think_inline without image should send text-only content blocks."""
+    brain = BrainClient(mode="inline")
+    if brain._anthropic is None:
+        pytest.skip("No Anthropic client available")
+
+    mock_response = MagicMock()
+    mock_response.content = [MagicMock(text="Hello.")]
+
+    brain._anthropic.messages.create = AsyncMock(return_value=mock_response)
+    result = await brain._think_inline("hello", "")
+    assert result["reply"] == "Hello."
+
+    call_kwargs = brain._anthropic.messages.create.call_args.kwargs
+    content = call_kwargs["messages"][0]["content"]
+    assert isinstance(content, list)
+    assert len(content) == 1
+    assert content[0]["type"] == "text"
+
+
+async def test_think_server_includes_image():
+    """_think_server should include image_base64 in the POST payload."""
+    brain = BrainClient(mode="server")
+
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"reply": "I see it!", "commands": []}
+    mock_resp.raise_for_status = MagicMock()
+
+    brain._http.post = AsyncMock(return_value=mock_resp)
+    result = await brain._think_server("what is this?", "", "http://localhost:8003", "imagedata123")
+    assert result["reply"] == "I see it!"
+
+    call_kwargs = brain._http.post.call_args
+    payload = call_kwargs.kwargs.get("json") or call_kwargs[1]["json"]
+    assert payload["image_base64"] == "imagedata123"
+    assert payload["transcript"] == "what is this?"
+
+
+async def test_think_server_no_image():
+    """_think_server without image should not include image_base64 in payload."""
+    brain = BrainClient(mode="server")
+
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"reply": "Hi!", "commands": []}
+    mock_resp.raise_for_status = MagicMock()
+
+    brain._http.post = AsyncMock(return_value=mock_resp)
+    await brain._think_server("hello", "", "http://localhost:8003")
+
+    call_kwargs = brain._http.post.call_args
+    payload = call_kwargs.kwargs.get("json") or call_kwargs[1]["json"]
+    assert "image_base64" not in payload
 
 
 # --- Helpers ---

@@ -16,6 +16,8 @@ dependencies = [
     "ipykernel>=7.2.0",
     "anthropic>=0.84.0",
     "python-multipart>=0.0.22",
+    "openai-whisper>=20240930",
+    "elevenlabs>=1.0",
 ]
 
 [project.scripts]

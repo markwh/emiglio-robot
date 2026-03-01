@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
     global client, voice_id, model_id
     api_key = os.environ.get("ELEVENLABS_API_KEY", "")
     voice_id = os.environ.get("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")  # Rachel
-    model_id = os.environ.get("ELEVENLABS_MODEL_ID", "eleven_monolingual_v1")
+    model_id = os.environ.get("ELEVENLABS_MODEL_ID", "eleven_flash_v2_5")
 
     if api_key:
         client = AsyncElevenLabs(api_key=api_key)
