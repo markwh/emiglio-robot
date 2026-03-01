@@ -21,6 +21,9 @@ context/*.wav
 camera_test_snapshot.jpg
 .pytest_cache/
 
+# Secrets
+.env
+
 # local-only folders
 context/
 
