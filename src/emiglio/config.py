@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     web_host: str = "0.0.0.0"
     web_port: int = 8080
 
+    # STT mode: "inline" (local whisper) or "server" (HTTP to Docker service)
+    stt_mode: str = "inline"
+    stt_model: str = "base"
+
     # Brain mode: "inline" (direct API call) or "server" (HTTP to Docker service)
     brain_mode: str = "inline"
     brain_model: str = "claude-sonnet-4-5-20250929"

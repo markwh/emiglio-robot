@@ -13,6 +13,7 @@ from emiglio.brain import BrainClient
 from emiglio.config import settings
 from emiglio.event_bus import EventBus
 from emiglio.models import Events, MotorCommand
+from emiglio.stt import STTClient
 from emiglio.vision.camera import Camera
 
 logger = logging.getLogger(__name__)
@@ -39,12 +40,14 @@ class ConversationManager:
         audio_capture=None,
         audio_playback=None,
         brain: BrainClient | None = None,
+        stt: STTClient | None = None,
     ) -> None:
         self._bus = bus
         self._camera = camera
         self._capture = audio_capture
         self._playback = audio_playback
         self._brain = brain
+        self._stt = stt
         self._client = httpx.AsyncClient(timeout=30.0)
         self._busy = False
 
@@ -156,17 +159,10 @@ class ConversationManager:
             self._busy = False
 
     async def _transcribe(self, wav_bytes: bytes) -> str:
-        """Call the STT server."""
-        try:
-            resp = await self._client.post(
-                f"{settings.server_stt_url}/transcribe",
-                files={"audio": ("audio.wav", wav_bytes, "audio/wav")},
-            )
-            resp.raise_for_status()
-            return resp.json().get("text", "").strip()
-        except Exception as e:
-            logger.error("STT request failed: %s", e)
-            return ""
+        """Transcribe audio via STTClient or direct HTTP fallback."""
+        if self._stt is not None:
+            return await self._stt.transcribe(wav_bytes, server_url=settings.server_stt_url)
+        return ""
 
     async def _think(self, transcript: str, context: str = "", image_base64: str | None = None) -> dict:
         """Call the brain (inline API or server, depending on config)."""
