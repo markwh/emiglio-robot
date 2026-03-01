@@ -23,6 +23,7 @@ The robot splits into three main sections, assembled bottom-up:
 - [Head Wiring](build-guide/head-wiring.md) — Electrical connections between head components and the Pi/amplifier in the body. Wiring diagram, connector pinouts, and assembly sequence.
 - [Body Wiring](build-guide/body-wiring.md) — Master wiring diagram, GPIO allocation, PAM8403 audio chain, power distribution, breadboard layout, and full integration assembly sequence.
 - [Base Wiring](build-guide/base-wiring.md) — Motor-to-TB6612FNG wiring, GPIO pin map, base-to-body connector pinout, and step-by-step assembly with troubleshooting.
+- [Pi Setup](build-guide/pi-setup.md) — First-timer walkthrough: flashing the OS, SSH, installing the emiglio stack, and testing the web UI.
 - **[Base Platform Build](build-guide/base-platform-build.md)** — End-to-end guide: from opening the base to driving the robot from your laptop via the web UI joystick.
 
 ### Findings
