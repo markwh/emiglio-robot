@@ -569,3 +569,281 @@ main {
 #stop-btn:active {
     background: #d32f2f;
 }
+
+/* ---- Skills ---- */
+
+#skills-section {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+#skill-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.skill-btn {
+    padding: 0.6rem 1.25rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    background: #0f3460;
+    color: #00d4ff;
+    border: 1px solid #0f3460;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    flex: 1;
+    max-width: 140px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: background 0.15s, color 0.15s;
+}
+
+.skill-btn:hover {
+    background: #16213e;
+}
+
+.skill-btn:active,
+.skill-btn.executing {
+    background: #ff9800;
+    color: #1a1a2e;
+    border-color: #ff9800;
+}
+
+.skill-btn:disabled {
+    background: #333;
+    color: #666;
+    border-color: #333;
+    cursor: not-allowed;
+}
+
+#skill-params {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.skill-param-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.skill-param-row label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #888;
+    width: 4.5rem;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.skill-param-row input[type="range"] {
+    flex: 1;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: #16213e;
+    border-radius: 3px;
+    outline: none;
+}
+
+.skill-param-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #00d4ff;
+    cursor: pointer;
+}
+
+.skill-param-row input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #00d4ff;
+    cursor: pointer;
+    border: none;
+}
+
+.skill-param-row span {
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: #888;
+    width: 2.5rem;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+/* ---- Voice Lab ---- */
+
+#voicelab-section {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.voicelab-header {
+    display: flex;
+    align-items: center;
+}
+
+.voicelab-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.voicelab-select-row {
+    display: flex;
+    gap: 0.5rem;
+}
+
+#voicelab-select {
+    flex: 1;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.85rem;
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #16213e;
+    color: #00d4ff;
+    border: 1px solid #0f3460;
+    border-radius: 0.35rem;
+    outline: none;
+    cursor: pointer;
+}
+
+#voicelab-select:focus {
+    border-color: #00d4ff;
+}
+
+#voicelab-refresh {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+    background: #0f3460;
+    color: #00d4ff;
+    border: 1px solid #0f3460;
+    border-radius: 0.35rem;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+#voicelab-refresh:hover {
+    background: #16213e;
+}
+
+.voicelab-meta {
+    background: #16213e;
+    border-radius: 0.5rem;
+    padding: 0.6rem 0.75rem;
+    min-height: 2.5rem;
+}
+
+.voicelab-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #e0e0e0;
+    margin-bottom: 0.3rem;
+}
+
+.voicelab-labels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-bottom: 0.3rem;
+}
+
+.voicelab-label-tag {
+    display: inline-block;
+    padding: 0.1rem 0.45rem;
+    font-size: 0.7rem;
+    background: #0f3460;
+    color: #00d4ff;
+    border-radius: 0.75rem;
+}
+
+.voicelab-desc {
+    font-size: 0.8rem;
+    color: #888;
+    line-height: 1.4;
+}
+
+.voicelab-sample-row {
+    display: flex;
+}
+
+#voicelab-text {
+    flex: 1;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.85rem;
+    background: #16213e;
+    color: #e0e0e0;
+    border: 1px solid #0f3460;
+    border-radius: 0.5rem;
+    outline: none;
+}
+
+#voicelab-text:focus {
+    border-color: #00d4ff;
+}
+
+.voicelab-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#voicelab-preview-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: #0f3460;
+    color: #00d4ff;
+    border: 1px solid #0f3460;
+    border-radius: 0.5rem;
+    cursor: pointer;
+}
+
+#voicelab-preview-btn:hover {
+    background: #16213e;
+}
+
+#voicelab-preview-btn:disabled {
+    color: #556;
+    cursor: wait;
+}
+
+#voicelab-activate-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: #0f3460;
+    color: #00d4ff;
+    border: 1px solid #0f3460;
+    border-radius: 0.5rem;
+    cursor: pointer;
+}
+
+#voicelab-activate-btn:hover {
+    background: #16213e;
+}
+
+#voicelab-activate-btn:disabled {
+    color: #556;
+    cursor: wait;
+}
+
+#voicelab-activate-btn.active-voice {
+    background: #00d4ff;
+    color: #1a1a2e;
+    border-color: #00d4ff;
+}
+
+#voicelab-status {
+    font-size: 0.8rem;
+    color: #888;
+    flex: 1;
+}

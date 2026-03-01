@@ -91,3 +91,73 @@ async def test_synthesize_server():
     assert call_args[0][0] == "http://localhost:8002/synthesize"
     payload = call_args[1]["json"]
     assert payload == {"text": "Hello"}
+
+
+async def test_list_voices():
+    """list_voices() returns simplified dicts from ElevenLabs API."""
+    mock_module, mock_client = _make_mock_elevenlabs()
+
+    voice1 = MagicMock()
+    voice1.voice_id = "v1"
+    voice1.name = "Rachel"
+    voice1.category = "premade"
+    voice1.labels = {"accent": "american", "age": "young"}
+    voice1.description = "A calm voice"
+    voice1.preview_url = "https://example.com/preview1.mp3"
+
+    voice2 = MagicMock()
+    voice2.voice_id = "v2"
+    voice2.name = "Dave"
+    voice2.category = "cloned"
+    voice2.labels = None
+    voice2.description = None
+    voice2.preview_url = None
+
+    response = MagicMock()
+    response.voices = [voice1, voice2]
+    mock_client.voices.get_all = AsyncMock(return_value=response)
+
+    with patch.dict(sys.modules, {"elevenlabs": mock_module}):
+        client = TTSClient(mode="inline", voice_id="v1", model_id="m1")
+
+    result = await client.list_voices()
+    assert len(result) == 2
+    assert result[0]["voice_id"] == "v1"
+    assert result[0]["name"] == "Rachel"
+    assert result[0]["category"] == "premade"
+    assert result[0]["labels"] == {"accent": "american", "age": "young"}
+    assert result[0]["description"] == "A calm voice"
+    assert result[0]["preview_url"] == "https://example.com/preview1.mp3"
+    assert result[1]["voice_id"] == "v2"
+    assert result[1]["labels"] == {}
+    assert result[1]["description"] == ""
+
+
+async def test_synthesize_with_voice_override():
+    """synthesize() passes override voice_id/model_id to the ElevenLabs API."""
+    call_kwargs = {}
+
+    async def fake_convert(**kwargs):
+        call_kwargs.update(kwargs)
+        yield b"\x00\x01" * 50
+
+    mock_module, mock_client = _make_mock_elevenlabs()
+    mock_client.text_to_speech.convert = fake_convert
+
+    with patch.dict(sys.modules, {"elevenlabs": mock_module}):
+        client = TTSClient(mode="inline", voice_id="default-voice", model_id="default-model")
+
+    await client.synthesize("Hi", voice_id="override-voice", model_id="override-model")
+    assert call_kwargs["voice_id"] == "override-voice"
+    assert call_kwargs["model_id"] == "override-model"
+
+
+def test_set_voice():
+    """set_voice() updates the voice_id property."""
+    mock_module, mock_client = _make_mock_elevenlabs()
+    with patch.dict(sys.modules, {"elevenlabs": mock_module}):
+        client = TTSClient(mode="inline", voice_id="original", model_id="m1")
+
+    assert client.voice_id == "original"
+    client.set_voice("new-voice")
+    assert client.voice_id == "new-voice"

@@ -23,6 +23,22 @@
   const chatForm = document.getElementById("chat-form");
   const chatInput = document.getElementById("chat-input");
 
+  // Voice Lab DOM refs
+  const vlSelect = document.getElementById("voicelab-select");
+  const vlRefreshBtn = document.getElementById("voicelab-refresh");
+  const vlName = document.getElementById("voicelab-name");
+  const vlLabels = document.getElementById("voicelab-labels");
+  const vlDesc = document.getElementById("voicelab-desc");
+  const vlText = document.getElementById("voicelab-text");
+  const vlPreviewBtn = document.getElementById("voicelab-preview-btn");
+  const vlActivateBtn = document.getElementById("voicelab-activate-btn");
+  const vlStatus = document.getElementById("voicelab-status");
+  const vlAudio = document.getElementById("voicelab-audio");
+
+  // Voice Lab state
+  let vlVoices = [];
+  let vlActiveVoiceId = "";
+
   // Simulator DOM refs
   const simCanvas = document.getElementById("sim-canvas");
   const simCtx = simCanvas.getContext("2d");
@@ -585,12 +601,222 @@
   });
 
   loadCameraDevices();
+  loadVoices();
+
+  // ========== Skills ==========
+
+  const skillBtns = document.querySelectorAll(".skill-btn");
+  const skillSpeedInput = document.getElementById("skill-speed");
+  const skillSpeedVal = document.getElementById("skill-speed-val");
+  const skillDurationInput = document.getElementById("skill-duration");
+  const skillDurationVal = document.getElementById("skill-duration-val");
+
+  function getSkillSpeed() {
+    return parseInt(skillSpeedInput.value, 10) / 100;
+  }
+
+  function getSkillDuration() {
+    return parseInt(skillDurationInput.value, 10) / 10;
+  }
+
+  skillSpeedInput.addEventListener("input", () => {
+    skillSpeedVal.textContent = getSkillSpeed().toFixed(1);
+  });
+
+  skillDurationInput.addEventListener("input", () => {
+    skillDurationVal.textContent = getSkillDuration().toFixed(1) + "s";
+  });
+
+  function sendSkill(name) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      const speed = getSkillSpeed();
+      const duration = getSkillDuration();
+      ws.send(JSON.stringify({
+        type: "skill",
+        name: name,
+        speed: speed,
+        duration: duration,
+      }));
+      addEventEntry("skill", `${name} (speed=${speed.toFixed(1)}, duration=${duration.toFixed(1)}s)`);
+
+      // Disable all skill buttons during execution, re-enable after duration + buffer
+      skillBtns.forEach((btn) => {
+        btn.disabled = true;
+        if (btn.dataset.skill === name) btn.classList.add("executing");
+      });
+      setTimeout(() => {
+        skillBtns.forEach((btn) => {
+          btn.disabled = false;
+          btn.classList.remove("executing");
+        });
+      }, (duration + 0.5) * 1000);
+    }
+  }
+
+  skillBtns.forEach((btn) => {
+    btn.addEventListener("click", () => sendSkill(btn.dataset.skill));
+  });
 
   // Simulator controls
   simResetBtn.addEventListener("click", () => {
     resetRobot();
     addEventEntry("simulator", "Position reset");
   });
+
+  // ========== Voice Lab ==========
+
+  async function loadVoices() {
+    vlStatus.textContent = "Loading voices...";
+    try {
+      const resp = await fetch("/voicelab/voices");
+      const data = await resp.json();
+      if (!data.ok) {
+        vlStatus.textContent = data.error || "Failed to load voices";
+        return;
+      }
+      vlVoices = data.voices || [];
+      vlActiveVoiceId = data.active_voice_id || "";
+
+      vlSelect.innerHTML = "";
+      if (vlVoices.length === 0) {
+        const opt = document.createElement("option");
+        opt.textContent = "No voices available";
+        opt.disabled = true;
+        vlSelect.appendChild(opt);
+        vlStatus.textContent = "No voices found";
+        return;
+      }
+
+      // Group by category
+      const grouped = {};
+      vlVoices.forEach((v) => {
+        const cat = v.category || "other";
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(v);
+      });
+
+      Object.keys(grouped).sort().forEach((cat) => {
+        const group = document.createElement("optgroup");
+        group.label = cat;
+        grouped[cat].forEach((v) => {
+          const opt = document.createElement("option");
+          opt.value = v.voice_id;
+          opt.textContent = v.name + (v.voice_id === vlActiveVoiceId ? " (active)" : "");
+          if (v.voice_id === vlActiveVoiceId) opt.selected = true;
+          group.appendChild(opt);
+        });
+        vlSelect.appendChild(group);
+      });
+
+      updateVoiceMeta();
+      vlStatus.textContent = `${vlVoices.length} voices loaded`;
+    } catch (e) {
+      vlStatus.textContent = "Error loading voices: " + e.message;
+    }
+  }
+
+  function updateVoiceMeta() {
+    const id = vlSelect.value;
+    const voice = vlVoices.find((v) => v.voice_id === id);
+    if (!voice) {
+      vlName.textContent = "";
+      vlLabels.innerHTML = "";
+      vlDesc.textContent = "";
+      vlActivateBtn.classList.remove("active-voice");
+      return;
+    }
+    vlName.textContent = voice.name;
+    vlLabels.innerHTML = "";
+    if (voice.labels && typeof voice.labels === "object") {
+      Object.entries(voice.labels).forEach(([key, val]) => {
+        const tag = document.createElement("span");
+        tag.className = "voicelab-label-tag";
+        tag.textContent = val || key;
+        vlLabels.appendChild(tag);
+      });
+    }
+    vlDesc.textContent = voice.description || "";
+    if (id === vlActiveVoiceId) {
+      vlActivateBtn.classList.add("active-voice");
+    } else {
+      vlActivateBtn.classList.remove("active-voice");
+    }
+  }
+
+  async function previewVoice() {
+    const voiceId = vlSelect.value;
+    const text = vlText.value.trim();
+    if (!voiceId || !text) {
+      vlStatus.textContent = "Select a voice and enter sample text";
+      return;
+    }
+    vlPreviewBtn.disabled = true;
+    vlStatus.textContent = "Synthesizing...";
+    try {
+      const resp = await fetch("/voicelab/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text, voice_id: voiceId }),
+      });
+      if (!resp.ok || resp.headers.get("content-type")?.includes("application/json")) {
+        const err = await resp.json();
+        vlStatus.textContent = err.error || "Preview failed";
+        return;
+      }
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      vlAudio.src = url;
+      vlAudio.play();
+      vlStatus.textContent = "Playing preview...";
+      vlAudio.onended = () => {
+        vlStatus.textContent = "Preview complete";
+        URL.revokeObjectURL(url);
+      };
+    } catch (e) {
+      vlStatus.textContent = "Preview error: " + e.message;
+    } finally {
+      vlPreviewBtn.disabled = false;
+    }
+  }
+
+  async function activateVoice() {
+    const voiceId = vlSelect.value;
+    if (!voiceId) return;
+    vlActivateBtn.disabled = true;
+    vlStatus.textContent = "Activating...";
+    try {
+      const resp = await fetch("/voicelab/activate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ voice_id: voiceId }),
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        vlActiveVoiceId = data.active_voice_id;
+        // Update dropdown labels to reflect active state
+        Array.from(vlSelect.options).forEach((opt) => {
+          opt.textContent = opt.textContent.replace(" (active)", "");
+          if (opt.value === vlActiveVoiceId) {
+            opt.textContent += " (active)";
+          }
+        });
+        vlActivateBtn.classList.add("active-voice");
+        vlStatus.textContent = "Voice activated!";
+        addEventEntry("voicelab", "Voice set to " + (vlVoices.find((v) => v.voice_id === voiceId)?.name || voiceId));
+      } else {
+        vlStatus.textContent = data.error || "Activation failed";
+      }
+    } catch (e) {
+      vlStatus.textContent = "Activation error: " + e.message;
+    } finally {
+      vlActivateBtn.disabled = false;
+    }
+  }
+
+  vlSelect.addEventListener("change", updateVoiceMeta);
+  vlRefreshBtn.addEventListener("click", loadVoices);
+  vlPreviewBtn.addEventListener("click", previewVoice);
+  vlActivateBtn.addEventListener("click", activateVoice);
 
   // -- Init --
   drawJoystick(0, 0);

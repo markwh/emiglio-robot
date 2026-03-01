@@ -30,6 +30,18 @@ MOVE_PRESETS = {
 
 MOVE_DURATION = 1.0  # seconds to hold a movement command
 
+# Locomotion skill constants
+DEFAULT_SPEED_FACTOR = 1.0
+DEFAULT_MOVE_DURATION = 1.0
+COMPOUND_BASE_SPEED = 0.6
+COMPOUND_MOVES = {"spin", "wiggle", "dance"}
+
+# Clamp ranges
+MIN_SPEED = 0.1
+MAX_SPEED = 1.0
+MIN_DURATION = 0.1
+MAX_DURATION = 5.0
+
 
 class ConversationManager:
     """Ties together audio, STT, brain, TTS, and locomotion."""
@@ -210,25 +222,100 @@ class ConversationManager:
         action = cmd.get("action", "")
         params = cmd.get("params", "")
 
-        if action == "move":
-            speeds = MOVE_PRESETS.get(params)
-            if speeds:
-                logger.info("Executing move: %s", params)
+        if action != "move":
+            logger.warning("Unknown command action: %s", action)
+            return
+
+        # Extract and clamp speed/duration
+        speed_factor = max(MIN_SPEED, min(MAX_SPEED, cmd.get("speed", DEFAULT_SPEED_FACTOR)))
+        duration = max(MIN_DURATION, min(MAX_DURATION, cmd.get("duration", DEFAULT_MOVE_DURATION)))
+
+        if params in COMPOUND_MOVES:
+            await self._execute_compound(params, speed_factor, duration)
+        elif params in MOVE_PRESETS:
+            await self._execute_simple(params, speed_factor, duration)
+        else:
+            logger.warning("Unknown move direction: %s", params)
+
+    async def _execute_simple(self, params: str, speed_factor: float, duration: float) -> None:
+        """Execute a basic directional move with speed scaling."""
+        base_left, base_right = MOVE_PRESETS[params]
+        left = max(-1.0, min(1.0, base_left * speed_factor))
+        right = max(-1.0, min(1.0, base_right * speed_factor))
+
+        logger.info("Executing move: %s (speed=%.2f, duration=%.1fs)", params, speed_factor, duration)
+        await self._bus.publish(
+            Events.MOTOR_COMMAND,
+            MotorCommand(left=left, right=right),
+        )
+        if params != "stop":
+            await asyncio.sleep(duration)
+            await self._bus.publish(
+                Events.MOTOR_COMMAND,
+                MotorCommand(left=0, right=0),
+            )
+
+    async def _execute_compound(self, params: str, speed_factor: float, duration: float) -> None:
+        """Execute a compound expressive movement."""
+        if params == "spin":
+            await self._execute_spin(speed_factor, duration)
+        elif params == "wiggle":
+            await self._execute_wiggle(speed_factor, duration)
+        elif params == "dance":
+            await self._execute_dance(speed_factor, duration)
+
+    async def _execute_spin(self, speed_factor: float, duration: float) -> None:
+        """Spin in place: left forward, right backward."""
+        spd = COMPOUND_BASE_SPEED * speed_factor
+        left = max(-1.0, min(1.0, spd))
+        right = max(-1.0, min(1.0, -spd))
+        logger.info("Executing spin (speed=%.2f, duration=%.1fs)", speed_factor, duration)
+        await self._bus.publish(
+            Events.MOTOR_COMMAND,
+            MotorCommand(left=left, right=right),
+        )
+        await asyncio.sleep(duration)
+        await self._bus.publish(
+            Events.MOTOR_COMMAND,
+            MotorCommand(left=0, right=0),
+        )
+
+    async def _execute_wiggle(self, speed_factor: float, duration: float) -> None:
+        """Wiggle: alternating quick left/right pivots."""
+        step = 0.2
+        spd = COMPOUND_BASE_SPEED * speed_factor
+        left_spd = max(-1.0, min(1.0, spd))
+        elapsed = 0.0
+        go_left = True
+        logger.info("Executing wiggle (speed=%.2f, duration=%.1fs)", speed_factor, duration)
+        while elapsed < duration:
+            t = min(step, duration - elapsed)
+            if go_left:
                 await self._bus.publish(
                     Events.MOTOR_COMMAND,
-                    MotorCommand(left=speeds[0], right=speeds[1]),
+                    MotorCommand(left=-left_spd, right=left_spd),
                 )
-                # Hold the movement briefly then stop
-                if params != "stop":
-                    await asyncio.sleep(MOVE_DURATION)
-                    await self._bus.publish(
-                        Events.MOTOR_COMMAND,
-                        MotorCommand(left=0, right=0),
-                    )
             else:
-                logger.warning("Unknown move direction: %s", params)
-        else:
-            logger.warning("Unknown command action: %s", action)
+                await self._bus.publish(
+                    Events.MOTOR_COMMAND,
+                    MotorCommand(left=left_spd, right=-left_spd),
+                )
+            await asyncio.sleep(t)
+            elapsed += t
+            go_left = not go_left
+        await self._bus.publish(
+            Events.MOTOR_COMMAND,
+            MotorCommand(left=0, right=0),
+        )
+
+    async def _execute_dance(self, speed_factor: float, duration: float) -> None:
+        """Dance: forward, spin, wiggle, backward — each a quarter of total duration."""
+        quarter = duration / 4.0
+        logger.info("Executing dance (speed=%.2f, duration=%.1fs)", speed_factor, duration)
+        await self._execute_simple("forward", speed_factor, quarter)
+        await self._execute_spin(speed_factor, quarter)
+        await self._execute_wiggle(speed_factor, quarter)
+        await self._execute_simple("backward", speed_factor, quarter)
 
     async def close(self) -> None:
         await self._client.aclose()

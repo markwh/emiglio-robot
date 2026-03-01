@@ -11,8 +11,9 @@ from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
+from typing import Optional
 
 from emiglio.event_bus import EventBus
 from emiglio.models import Events, MotorCommand, JoystickInput
@@ -135,6 +136,51 @@ def create_app(
             logger.error("TTS test failed: %s", e)
             return {"ok": False, "error": str(e)}
 
+    # -- Voice Lab endpoints --
+
+    class VoicePreviewRequest(BaseModel):
+        text: str
+        voice_id: str
+        model_id: Optional[str] = None
+
+    class VoiceActivateRequest(BaseModel):
+        voice_id: str
+
+    @app.get("/voicelab/voices")
+    async def voicelab_voices():
+        if conversation is None or conversation._tts is None:
+            return {"ok": False, "error": "TTS not available"}
+        voices = await conversation._tts.list_voices()
+        return {
+            "ok": True,
+            "voices": voices,
+            "active_voice_id": conversation._tts.voice_id,
+        }
+
+    @app.post("/voicelab/preview")
+    async def voicelab_preview(req: VoicePreviewRequest):
+        if conversation is None or conversation._tts is None or not conversation._tts.available:
+            return {"ok": False, "error": "TTS not available"}
+        try:
+            audio = await conversation._tts.synthesize(
+                text=req.text,
+                voice_id=req.voice_id,
+                model_id=req.model_id,
+            )
+            if audio is None:
+                return {"ok": False, "error": "Synthesis returned no audio"}
+            return Response(content=audio, media_type="audio/wav")
+        except Exception as e:
+            logger.error("Voice preview failed: %s", e)
+            return {"ok": False, "error": str(e)}
+
+    @app.post("/voicelab/activate")
+    async def voicelab_activate(req: VoiceActivateRequest):
+        if conversation is None or conversation._tts is None:
+            return {"ok": False, "error": "TTS not available"}
+        conversation._tts.set_voice(req.voice_id)
+        return {"ok": True, "active_voice_id": conversation._tts.voice_id}
+
     @app.websocket("/ws")
     async def websocket_endpoint(ws: WebSocket):
         await ws.accept()
@@ -189,6 +235,22 @@ def create_app(
                     asyncio.create_task(
                         _run_conversation(conversation, ws, send_status, voice=True)
                     )
+
+                elif msg_type == "skill":
+                    # Expressive skill: spin, wiggle, dance
+                    skill_name = data.get("name", "")
+                    speed = float(data.get("speed", 1.0))
+                    duration = float(data.get("duration", 1.0))
+                    valid_skills = {"spin", "wiggle", "dance"}
+                    if skill_name not in valid_skills:
+                        await ws.send_json({"type": "status", "message": f"Unknown skill: {skill_name}"})
+                        continue
+                    if conversation is None:
+                        await ws.send_json({"type": "status", "message": "Movement not available"})
+                        continue
+                    await _broadcast_event("skill", f"{skill_name} speed={speed:.1f} duration={duration:.1f}s")
+                    cmd = {"action": "move", "params": skill_name, "speed": speed, "duration": duration}
+                    asyncio.create_task(conversation._execute_command(cmd))
 
                 elif msg_type == "text":
                     # Text input from chat box
