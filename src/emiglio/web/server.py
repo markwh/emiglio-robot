@@ -8,6 +8,7 @@ from pathlib import Path
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
 from emiglio.event_bus import EventBus
 from emiglio.models import Events, MotorCommand, JoystickInput
@@ -74,6 +75,26 @@ def create_app(
         if camera is None:
             return {"error": "No camera available"}
         return stream_response(camera)
+
+    @app.get("/camera/devices")
+    async def camera_devices():
+        devices = Camera.list_devices()
+        active = camera.active_index if camera is not None else None
+        return {"devices": devices, "active_index": active}
+
+    class CameraSwitchRequest(BaseModel):
+        index: int
+
+    @app.post("/camera/switch")
+    async def camera_switch(req: CameraSwitchRequest):
+        if camera is None:
+            return {"error": "No camera available"}
+        try:
+            await asyncio.to_thread(camera.switch, req.index)
+            return {"ok": True, "active_index": camera.active_index}
+        except Exception as e:
+            logger.error("Camera switch failed: %s", e)
+            return {"error": str(e)}
 
     @app.websocket("/ws")
     async def websocket_endpoint(ws: WebSocket):

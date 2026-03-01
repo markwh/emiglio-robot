@@ -504,14 +504,69 @@
     }
   });
 
-  // Camera feed error handling
+  // Camera feed and device selection
   const cameraFeed = document.getElementById("camera-feed");
   const cameraOverlay = document.getElementById("camera-overlay");
+  const cameraSelect = document.getElementById("camera-select");
+
   if (cameraFeed) {
     cameraFeed.addEventListener("error", () => {
       cameraOverlay.classList.remove("hidden");
     });
   }
+
+  async function loadCameraDevices() {
+    try {
+      const resp = await fetch("/camera/devices");
+      const data = await resp.json();
+      cameraSelect.innerHTML = "";
+      if (data.devices && data.devices.length > 0) {
+        data.devices.forEach((dev) => {
+          const opt = document.createElement("option");
+          opt.value = dev.index;
+          opt.textContent = `${dev.name} (/dev/video${dev.index})`;
+          if (dev.index === data.active_index) opt.selected = true;
+          cameraSelect.appendChild(opt);
+        });
+      } else {
+        const opt = document.createElement("option");
+        opt.textContent = "No cameras found";
+        opt.disabled = true;
+        cameraSelect.appendChild(opt);
+      }
+    } catch {
+      cameraSelect.innerHTML = "<option disabled>Error loading devices</option>";
+    }
+  }
+
+  cameraSelect.addEventListener("change", async () => {
+    const index = parseInt(cameraSelect.value, 10);
+    if (isNaN(index)) return;
+    cameraSelect.disabled = true;
+    try {
+      const resp = await fetch("/camera/switch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ index }),
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        // Reset the MJPEG stream by re-assigning src
+        cameraFeed.src = "";
+        cameraFeed.src = "/stream";
+        cameraOverlay.classList.add("hidden");
+        addEventEntry("camera", `Switched to /dev/video${index}`);
+      } else {
+        addEventEntry("camera", `Switch failed: ${data.error}`);
+      }
+    } catch (e) {
+      addEventEntry("camera", `Switch error: ${e.message}`);
+    } finally {
+      cameraSelect.disabled = false;
+    }
+  });
+
+  loadCameraDevices();
 
   // Simulator controls
   simResetBtn.addEventListener("click", () => {

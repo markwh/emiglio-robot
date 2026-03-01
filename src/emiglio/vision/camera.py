@@ -1,9 +1,11 @@
 """OpenCV USB camera capture with async frame access."""
 
 import asyncio
+import glob as globmod
 import logging
 import threading
 import time
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -28,13 +30,55 @@ class Camera:
         self._lock = threading.Lock()
         self._running = False
         self._thread: threading.Thread | None = None
+        self._index: int = settings.camera_index
 
-    def start(self) -> None:
+    @staticmethod
+    def list_devices() -> list[dict]:
+        """Enumerate available V4L2 video devices.
+
+        Returns a list of dicts: [{"index": 0, "name": "Integrated Webcam"}, ...]
+        Only includes devices that OpenCV can actually open (filters out
+        metadata-only /dev/video nodes).
+        """
+        devices = []
+        for path in sorted(globmod.glob("/dev/video*")):
+            try:
+                index = int(path.replace("/dev/video", ""))
+            except ValueError:
+                continue
+
+            # Read device name from udev or sysfs
+            name = f"Video device {index}"
+            sysfs_name = Path(f"/sys/class/video4linux/video{index}/name")
+            if sysfs_name.exists():
+                try:
+                    name = sysfs_name.read_text().strip()
+                except OSError:
+                    pass
+
+            # Probe whether OpenCV can open this device (skip metadata nodes)
+            cap = cv2.VideoCapture(index)
+            if cap.isOpened():
+                cap.release()
+                devices.append({"index": index, "name": name})
+            else:
+                cap.release()
+
+        return devices
+
+    @property
+    def active_index(self) -> int:
+        """Return the currently active camera index."""
+        return self._index
+
+    def start(self, index: int | None = None) -> None:
         if self._running:
             return
-        self._cap = cv2.VideoCapture(settings.camera_index)
+        if index is not None:
+            self._index = index
+        self._cap = cv2.VideoCapture(self._index)
         if not self._cap.isOpened():
-            logger.error("Failed to open camera %d", settings.camera_index)
+            logger.error("Failed to open camera %d", self._index)
             self._cap = None
             return
         self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, settings.camera_width)
@@ -44,10 +88,17 @@ class Camera:
         self._thread.start()
         logger.info(
             "Camera started (index=%d, %dx%d)",
-            settings.camera_index,
+            self._index,
             settings.camera_width,
             settings.camera_height,
         )
+
+    def switch(self, index: int) -> None:
+        """Hot-switch to a different camera device."""
+        logger.info("Switching camera from %d to %d", self._index, index)
+        self.stop()
+        self._jpeg = None
+        self.start(index)
 
     def _capture_loop(self) -> None:
         consecutive_failures = 0
@@ -59,7 +110,7 @@ class Camera:
                     logger.warning("Camera: %d consecutive read failures, retrying open...", consecutive_failures)
                     self._cap.release()
                     time.sleep(1.0)
-                    self._cap = cv2.VideoCapture(settings.camera_index)
+                    self._cap = cv2.VideoCapture(self._index)
                     consecutive_failures = 0
                 else:
                     time.sleep(0.01)
