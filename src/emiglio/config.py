@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     web_host: str = "0.0.0.0"
     web_port: int = 8080
 
+    # Brain mode: "inline" (direct API call) or "server" (HTTP to Docker service)
+    brain_mode: str = "inline"
+    brain_model: str = "claude-sonnet-4-5-20250929"
+
     # Server (home server) URLs
     server_stt_url: str = "http://localhost:8001"
     server_tts_url: str = "http://localhost:8002"

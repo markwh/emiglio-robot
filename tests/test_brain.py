@@ -1,18 +1,19 @@
-"""Tests for the brain service LangGraph integration.
+"""Tests for the brain service LangGraph integration and Pi-side BrainClient.
 
-Tests the tool-to-command mapping and message extraction logic
-without making any API calls.
+Tests the tool-to-command mapping, message extraction logic, and
+inline brain client without making any API calls.
 """
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 # Add the brain service directory to the path so we can import its modules
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "server" / "brain"))
 
 from tools import ALL_TOOLS, TOOL_TO_COMMAND
 from graph import extract_commands, extract_reply
+from emiglio.brain import BrainClient, parse_commands
 
 
 # --- TOOL_TO_COMMAND mapping tests ---
@@ -149,6 +150,39 @@ def test_extract_commands_skips_human_messages():
     commands = extract_commands([human, ai])
     assert len(commands) == 1
     assert commands[0]["params"] == "backward"
+
+
+# --- Pi-side BrainClient tests ---
+
+
+def test_parse_commands_none():
+    text = "Just a regular response with no commands."
+    clean, commands = parse_commands(text)
+    assert len(commands) == 0
+    assert clean == text
+
+
+def test_brain_client_inline_mode():
+    """BrainClient in inline mode creates an Anthropic client (or warns if no key)."""
+    brain = BrainClient(mode="inline", model="claude-sonnet-4-5-20250929")
+    assert brain._mode == "inline"
+    # Client may or may not be available depending on ANTHROPIC_API_KEY
+    assert isinstance(brain.available, bool)
+
+
+def test_brain_client_server_mode():
+    """BrainClient in server mode creates an HTTP client."""
+    brain = BrainClient(mode="server")
+    assert brain._mode == "server"
+    assert brain.available is True
+    assert brain._http is not None
+
+
+def test_brain_client_invalid_mode():
+    """BrainClient raises ValueError for unknown mode."""
+    import pytest
+    with pytest.raises(ValueError, match="Unknown brain_mode"):
+        BrainClient(mode="banana")
 
 
 # --- Helpers ---
