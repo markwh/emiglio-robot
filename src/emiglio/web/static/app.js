@@ -32,6 +32,7 @@
   const vlText = document.getElementById("voicelab-text");
   const vlPreviewBtn = document.getElementById("voicelab-preview-btn");
   const vlActivateBtn = document.getElementById("voicelab-activate-btn");
+  const vlCustomId = document.getElementById("voicelab-custom-id");
   const vlStatus = document.getElementById("voicelab-status");
   const vlAudio = document.getElementById("voicelab-audio");
 
@@ -665,6 +666,11 @@
 
   // ========== Voice Lab ==========
 
+  function getEffectiveVoiceId() {
+    const custom = vlCustomId.value.trim();
+    return custom || vlSelect.value;
+  }
+
   async function loadVoices() {
     vlStatus.textContent = "Loading voices...";
     try {
@@ -676,6 +682,7 @@
       }
       vlVoices = data.voices || [];
       vlActiveVoiceId = data.active_voice_id || "";
+      vlCustomId.value = vlActiveVoiceId;
 
       vlSelect.innerHTML = "";
       if (vlVoices.length === 0) {
@@ -744,7 +751,7 @@
   }
 
   async function previewVoice() {
-    const voiceId = vlSelect.value;
+    const voiceId = getEffectiveVoiceId();
     const text = vlText.value.trim();
     if (!voiceId || !text) {
       vlStatus.textContent = "Select a voice and enter sample text";
@@ -780,7 +787,7 @@
   }
 
   async function activateVoice() {
-    const voiceId = vlSelect.value;
+    const voiceId = getEffectiveVoiceId();
     if (!voiceId) return;
     vlActivateBtn.disabled = true;
     vlStatus.textContent = "Activating...";

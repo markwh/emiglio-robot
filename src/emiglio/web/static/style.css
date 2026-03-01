@@ -771,6 +771,26 @@ main {
     line-height: 1.4;
 }
 
+.voicelab-custom-row {
+    display: flex;
+}
+
+#voicelab-custom-id {
+    flex: 1;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.85rem;
+    font-family: monospace;
+    background: #16213e;
+    color: #e0e0e0;
+    border: 1px solid #0f3460;
+    border-radius: 0.5rem;
+    outline: none;
+}
+
+#voicelab-custom-id:focus {
+    border-color: #00d4ff;
+}
+
 .voicelab-sample-row {
     display: flex;
 }
