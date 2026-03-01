@@ -82,6 +82,32 @@
                 <div id="voice-status">Ready</div>
             </section>
 
+            <section id="voicelab-section">
+                <div class="voicelab-header">
+                    <span class="section-title">Voice Lab</span>
+                </div>
+                <div class="voicelab-controls">
+                    <div class="voicelab-select-row">
+                        <select id="voicelab-select"><option>Loading voices...</option></select>
+                        <button id="voicelab-refresh" title="Refresh voice list">Refresh</button>
+                    </div>
+                    <div id="voicelab-meta" class="voicelab-meta">
+                        <div id="voicelab-name" class="voicelab-name"></div>
+                        <div id="voicelab-labels" class="voicelab-labels"></div>
+                        <div id="voicelab-desc" class="voicelab-desc"></div>
+                    </div>
+                    <div class="voicelab-sample-row">
+                        <input type="text" id="voicelab-text" value="Hello! I am Emiglio, your friendly robot companion." placeholder="Sample text...">
+                    </div>
+                    <div class="voicelab-actions">
+                        <button id="voicelab-preview-btn">Preview</button>
+                        <button id="voicelab-activate-btn">Set as Active</button>
+                        <span id="voicelab-status"></span>
+                    </div>
+                </div>
+                <audio id="voicelab-audio" style="display:none;"></audio>
+            </section>
+
             <section id="chat-section">
                 <div id="chat-log"></div>
                 <form id="chat-form">

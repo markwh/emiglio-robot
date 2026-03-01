@@ -45,13 +45,59 @@ class TTSClient:
             return self._elevenlabs is not None
         return self._http is not None
 
-    async def synthesize(self, text: str, server_url: str = "") -> bytes | None:
-        """Convert text to WAV audio bytes."""
+    @property
+    def voice_id(self) -> str:
+        return self._voice_id
+
+    @property
+    def model_id(self) -> str:
+        return self._model_id
+
+    def set_voice(self, voice_id: str) -> None:
+        """Change the active voice for all future synthesis calls."""
+        self._voice_id = voice_id
+        logger.info("TTS: voice changed to %s", voice_id)
+
+    async def list_voices(self) -> list[dict]:
+        """Return simplified voice info from ElevenLabs API."""
+        if self._elevenlabs is None:
+            return []
+        try:
+            response = await self._elevenlabs.voices.get_all()
+            voices = []
+            for v in response.voices:
+                voices.append({
+                    "voice_id": v.voice_id,
+                    "name": v.name,
+                    "category": getattr(v, "category", None),
+                    "labels": dict(v.labels) if v.labels else {},
+                    "description": getattr(v, "description", None) or "",
+                    "preview_url": getattr(v, "preview_url", None) or "",
+                })
+            return voices
+        except Exception as e:
+            logger.error("TTS list_voices failed: %s", e)
+            return []
+
+    async def synthesize(
+        self,
+        text: str,
+        server_url: str = "",
+        voice_id: str | None = None,
+        model_id: str | None = None,
+    ) -> bytes | None:
+        """Convert text to WAV audio bytes. Optional overrides for voice/model."""
         if self._mode == "inline":
-            return await self._synthesize_inline(text)
+            return await self._synthesize_inline(
+                text,
+                voice_id=voice_id or self._voice_id,
+                model_id=model_id or self._model_id,
+            )
         return await self._synthesize_server(text, server_url)
 
-    async def _synthesize_inline(self, text: str) -> bytes | None:
+    async def _synthesize_inline(
+        self, text: str, voice_id: str | None = None, model_id: str | None = None
+    ) -> bytes | None:
         """Call ElevenLabs API directly and return WAV bytes."""
         if self._elevenlabs is None:
             return None
@@ -60,8 +106,8 @@ class TTSClient:
             raw_chunks = []
             async for chunk in self._elevenlabs.text_to_speech.convert(
                 text=text,
-                voice_id=self._voice_id,
-                model_id=self._model_id,
+                voice_id=voice_id or self._voice_id,
+                model_id=model_id or self._model_id,
                 output_format="pcm_22050",
             ):
                 raw_chunks.append(chunk)
