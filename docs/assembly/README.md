@@ -25,6 +25,10 @@ The robot splits into three main sections, assembled bottom-up:
 - [Base Wiring](build-guide/base-wiring.md) — Motor-to-TB6612FNG wiring, GPIO pin map, base-to-body connector pinout, and step-by-step assembly with troubleshooting.
 - **[Base Platform Build](build-guide/base-platform-build.md)** — End-to-end guide: from opening the base to driving the robot from your laptop via the web UI joystick.
 
+### Findings
+
+- [Base Clutch Mechanism](findings/base-clutch-mechanism.md) — One-way clutch on drive axle prevents reverse drive. **Cross-workstream impact** — affects software locomotion assumptions.
+
 ### Reference
 
 - [Tools & Materials](tools-materials.md) — Tools needed and consumables/parts shopping list.
