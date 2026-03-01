@@ -236,6 +236,22 @@ def create_app(
                         _run_conversation(conversation, ws, send_status, voice=True)
                     )
 
+                elif msg_type == "skill":
+                    # Expressive skill: spin, wiggle, dance
+                    skill_name = data.get("name", "")
+                    speed = float(data.get("speed", 1.0))
+                    duration = float(data.get("duration", 1.0))
+                    valid_skills = {"spin", "wiggle", "dance"}
+                    if skill_name not in valid_skills:
+                        await ws.send_json({"type": "status", "message": f"Unknown skill: {skill_name}"})
+                        continue
+                    if conversation is None:
+                        await ws.send_json({"type": "status", "message": "Movement not available"})
+                        continue
+                    await _broadcast_event("skill", f"{skill_name} speed={speed:.1f} duration={duration:.1f}s")
+                    cmd = {"action": "move", "params": skill_name, "speed": speed, "duration": duration}
+                    asyncio.create_task(conversation._execute_command(cmd))
+
                 elif msg_type == "text":
                     # Text input from chat box
                     text = data.get("text", "").strip()

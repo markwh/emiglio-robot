@@ -68,6 +68,27 @@
                 <button id="stop-btn">STOP</button>
             </section>
 
+            <section id="skills-section">
+                <span class="section-title">Skills</span>
+                <div id="skill-buttons">
+                    <button class="skill-btn" data-skill="spin">Spin</button>
+                    <button class="skill-btn" data-skill="wiggle">Wiggle</button>
+                    <button class="skill-btn" data-skill="dance">Dance</button>
+                </div>
+                <div id="skill-params">
+                    <div class="skill-param-row">
+                        <label for="skill-speed">Speed</label>
+                        <input type="range" id="skill-speed" min="10" max="100" step="10" value="100">
+                        <span id="skill-speed-val">1.0</span>
+                    </div>
+                    <div class="skill-param-row">
+                        <label for="skill-duration">Duration</label>
+                        <input type="range" id="skill-duration" min="5" max="50" step="5" value="10">
+                        <span id="skill-duration-val">1.0s</span>
+                    </div>
+                </div>
+            </section>
+
             <section id="camera-section">
                 <div id="camera-toolbar">
                     <select id="camera-select"><option>Loading...</option></select>

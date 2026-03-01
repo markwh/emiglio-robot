@@ -603,6 +603,60 @@
   loadCameraDevices();
   loadVoices();
 
+  // ========== Skills ==========
+
+  const skillBtns = document.querySelectorAll(".skill-btn");
+  const skillSpeedInput = document.getElementById("skill-speed");
+  const skillSpeedVal = document.getElementById("skill-speed-val");
+  const skillDurationInput = document.getElementById("skill-duration");
+  const skillDurationVal = document.getElementById("skill-duration-val");
+
+  function getSkillSpeed() {
+    return parseInt(skillSpeedInput.value, 10) / 100;
+  }
+
+  function getSkillDuration() {
+    return parseInt(skillDurationInput.value, 10) / 10;
+  }
+
+  skillSpeedInput.addEventListener("input", () => {
+    skillSpeedVal.textContent = getSkillSpeed().toFixed(1);
+  });
+
+  skillDurationInput.addEventListener("input", () => {
+    skillDurationVal.textContent = getSkillDuration().toFixed(1) + "s";
+  });
+
+  function sendSkill(name) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      const speed = getSkillSpeed();
+      const duration = getSkillDuration();
+      ws.send(JSON.stringify({
+        type: "skill",
+        name: name,
+        speed: speed,
+        duration: duration,
+      }));
+      addEventEntry("skill", `${name} (speed=${speed.toFixed(1)}, duration=${duration.toFixed(1)}s)`);
+
+      // Disable all skill buttons during execution, re-enable after duration + buffer
+      skillBtns.forEach((btn) => {
+        btn.disabled = true;
+        if (btn.dataset.skill === name) btn.classList.add("executing");
+      });
+      setTimeout(() => {
+        skillBtns.forEach((btn) => {
+          btn.disabled = false;
+          btn.classList.remove("executing");
+        });
+      }, (duration + 0.5) * 1000);
+    }
+  }
+
+  skillBtns.forEach((btn) => {
+    btn.addEventListener("click", () => sendSkill(btn.dataset.skill));
+  });
+
   // Simulator controls
   simResetBtn.addEventListener("click", () => {
     resetRobot();
