@@ -35,8 +35,8 @@ def test_tool_to_command_all_are_move_actions():
 
 
 def test_tool_to_command_params_match_conversation_presets():
-    """Params must be one of the directions conversation.py expects."""
-    valid_params = {"forward", "backward", "left", "right", "stop"}
+    """Params must be one of the directions/compound moves conversation.py expects."""
+    valid_params = {"forward", "backward", "left", "right", "stop", "spin", "wiggle", "dance"}
     for name, cmd in TOOL_TO_COMMAND.items():
         assert cmd["params"] in valid_params, f"{name} has params={cmd['params']}"
 
@@ -184,6 +184,107 @@ def test_brain_client_invalid_mode():
     """BrainClient raises ValueError for unknown mode."""
     with pytest.raises(ValueError, match="Unknown brain_mode"):
         BrainClient(mode="banana")
+
+
+# --- parse_commands with speed/duration/compound tests ---
+
+
+def test_parse_commands_with_speed():
+    """speed= modifier should be extracted as a float."""
+    text = "Let me come closer. [COMMAND:move:forward,speed=0.5]"
+    clean, commands = parse_commands(text)
+    assert len(commands) == 1
+    assert commands[0]["params"] == "forward"
+    assert commands[0]["speed"] == pytest.approx(0.5)
+    assert "speed" not in clean
+
+
+def test_parse_commands_with_duration():
+    """duration= modifier should be extracted as a float."""
+    text = "On my way! [COMMAND:move:forward,duration=3.0]"
+    clean, commands = parse_commands(text)
+    assert len(commands) == 1
+    assert commands[0]["params"] == "forward"
+    assert commands[0]["duration"] == pytest.approx(3.0)
+
+
+def test_parse_commands_with_speed_and_duration():
+    """Both speed and duration together."""
+    text = "[COMMAND:move:backward,speed=0.8,duration=2.0]"
+    clean, commands = parse_commands(text)
+    assert len(commands) == 1
+    assert commands[0]["params"] == "backward"
+    assert commands[0]["speed"] == pytest.approx(0.8)
+    assert commands[0]["duration"] == pytest.approx(2.0)
+
+
+def test_parse_commands_ignores_unknown_keys():
+    """Unknown keys like turbo=yes should be silently dropped."""
+    text = "[COMMAND:move:forward,turbo=yes,speed=0.5]"
+    clean, commands = parse_commands(text)
+    assert "turbo" not in commands[0]
+    assert commands[0]["speed"] == pytest.approx(0.5)
+
+
+def test_parse_commands_malformed_value():
+    """Non-numeric values like speed=fast should be silently dropped."""
+    text = "[COMMAND:move:forward,speed=fast]"
+    clean, commands = parse_commands(text)
+    assert "speed" not in commands[0]
+    assert commands[0]["params"] == "forward"
+
+
+def test_parse_commands_compound_move():
+    """Compound move like dance should parse correctly."""
+    text = "How exciting! [COMMAND:move:dance]"
+    clean, commands = parse_commands(text)
+    assert len(commands) == 1
+    assert commands[0]["action"] == "move"
+    assert commands[0]["params"] == "dance"
+
+
+def test_parse_commands_compound_with_duration():
+    """Compound move with duration modifier."""
+    text = "[COMMAND:move:spin,duration=2.0]"
+    clean, commands = parse_commands(text)
+    assert commands[0]["params"] == "spin"
+    assert commands[0]["duration"] == pytest.approx(2.0)
+
+
+# --- extract_commands with tool args tests ---
+
+
+def test_extract_commands_with_speed_arg():
+    """Tool call with speed arg should merge into command dict."""
+    msg = _make_ai_message_with_tool_calls([
+        {"name": "move_forward", "args": {"speed": 0.5, "duration": 2.0}, "id": "tc1"},
+    ])
+    commands = extract_commands([msg])
+    assert len(commands) == 1
+    assert commands[0]["params"] == "forward"
+    assert commands[0]["speed"] == pytest.approx(0.5)
+    assert commands[0]["duration"] == pytest.approx(2.0)
+
+
+def test_extract_commands_without_args():
+    """Tool call with no args should not add speed/duration keys."""
+    msg = _make_ai_message_with_tool_calls([
+        {"name": "move_forward", "args": {}, "id": "tc1"},
+    ])
+    commands = extract_commands([msg])
+    assert len(commands) == 1
+    assert "speed" not in commands[0]
+    assert "duration" not in commands[0]
+
+
+def test_extract_commands_compound_tool():
+    """Compound tool like spin should be mapped correctly."""
+    msg = _make_ai_message_with_tool_calls([
+        {"name": "spin", "args": {"speed": 0.7}, "id": "tc1"},
+    ])
+    commands = extract_commands([msg])
+    assert len(commands) == 1
+    assert commands[0] == {"action": "move", "params": "spin", "speed": 0.7}
 
 
 # --- Multimodal vision tests ---

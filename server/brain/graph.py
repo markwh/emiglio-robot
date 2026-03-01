@@ -47,5 +47,11 @@ def extract_commands(messages: list) -> list[dict]:
             for tc in msg.tool_calls:
                 name = tc["name"]
                 if name in TOOL_TO_COMMAND:
-                    commands.append(TOOL_TO_COMMAND[name].copy())
+                    cmd = TOOL_TO_COMMAND[name].copy()
+                    args = tc.get("args", {})
+                    if "speed" in args:
+                        cmd["speed"] = args["speed"]
+                    if "duration" in args:
+                        cmd["duration"] = args["duration"]
+                    commands.append(cmd)
     return commands

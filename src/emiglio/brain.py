@@ -33,7 +33,17 @@ Available commands:
 - [COMMAND:move:left] — turn left
 - [COMMAND:move:right] — turn right
 - [COMMAND:move:stop] — stop moving
+- [COMMAND:move:spin] — spin in place (fun and expressive)
+- [COMMAND:move:wiggle] — wiggle back and forth (playful)
+- [COMMAND:move:dance] — do a little dance (celebratory)
 - [COMMAND:speak:text] — speak the text (automatic for your response text)
+
+You can add optional speed and duration modifiers to any move command:
+- speed: a number from 0.1 to 1.0 (default 1.0). Example: [COMMAND:move:forward,speed=0.5]
+- duration: seconds from 0.1 to 5.0 (default 1.0). Example: [COMMAND:move:forward,duration=2.0]
+- Both: [COMMAND:move:forward,speed=0.8,duration=2.0]
+
+Use spin, wiggle, and dance to express excitement, happiness, or celebration. Use slower speeds for gentler, more cautious movement.
 
 Include movement commands when they are a natural part of fulfilling a request. Do not add commands unless the situation calls for them.
 
@@ -45,14 +55,38 @@ RESPONSE STYLE
 - Sound like a friendly neighbor, not an assistant or a manual."""
 
 
+def _parse_param_string(raw: str) -> dict:
+    """Parse 'forward,speed=0.8,duration=2.0' into {"params": "forward", "speed": 0.8, ...}.
+
+    Unknown keys and non-numeric values are silently dropped.
+    """
+    parts = [p.strip() for p in raw.split(",")]
+    result: dict = {"params": parts[0]}
+    for part in parts[1:]:
+        if "=" not in part:
+            continue
+        key, _, value = part.partition("=")
+        key = key.strip()
+        value = value.strip()
+        if key not in ("speed", "duration"):
+            continue
+        try:
+            result[key] = float(value)
+        except ValueError:
+            pass  # silently drop malformed values like speed=fast
+    return result
+
+
 def parse_commands(text: str) -> tuple[str, list[dict]]:
     """Extract [COMMAND:action:params] from response text."""
     commands = []
     clean_text = text
     for match in re.finditer(r'\[COMMAND:(\w+):([^\]]+)\]', text):
         action = match.group(1)
-        params = match.group(2)
-        commands.append({"action": action, "params": params})
+        raw_params = match.group(2)
+        cmd = {"action": action}
+        cmd.update(_parse_param_string(raw_params))
+        commands.append(cmd)
         clean_text = clean_text.replace(match.group(0), "")
     return clean_text.strip(), commands
 
