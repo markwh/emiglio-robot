@@ -83,11 +83,11 @@ class ConversationManager:
             await status(f'Heard: "{transcript}"')
 
             # 3. Build context (include camera frame if available)
-            context = await self._build_context()
+            context, image_base64 = await self._build_context()
 
             # 4. Send to brain
             await status("Thinking...")
-            brain_result = await self._think(transcript, context)
+            brain_result = await self._think(transcript, context, image_base64)
             reply = brain_result.get("reply", "")
             commands = brain_result.get("commands", [])
             await status(f'Emiglio: "{reply}"')
@@ -128,10 +128,10 @@ class ConversationManager:
                 await status_callback(msg)
 
         try:
-            context = await self._build_context()
+            context, image_base64 = await self._build_context()
 
             await status("Thinking...")
-            brain_result = await self._think(text, context)
+            brain_result = await self._think(text, context, image_base64)
             reply = brain_result.get("reply", "")
             commands = brain_result.get("commands", [])
             await status(f'Emiglio: "{reply}"')
@@ -168,17 +168,21 @@ class ConversationManager:
             logger.error("STT request failed: %s", e)
             return ""
 
-    async def _think(self, transcript: str, context: str = "") -> dict:
+    async def _think(self, transcript: str, context: str = "", image_base64: str | None = None) -> dict:
         """Call the brain (inline API or server, depending on config)."""
         if self._brain is not None:
             return await self._brain.think(
-                transcript, context, server_url=settings.server_brain_url
+                transcript, context, server_url=settings.server_brain_url,
+                image_base64=image_base64,
             )
         # Fallback: direct HTTP call (no BrainClient configured)
         try:
+            payload: dict = {"transcript": transcript, "context": context}
+            if image_base64:
+                payload["image_base64"] = image_base64
             resp = await self._client.post(
                 f"{settings.server_brain_url}/think",
-                json={"transcript": transcript, "context": context},
+                json=payload,
             )
             resp.raise_for_status()
             return resp.json()
@@ -199,15 +203,15 @@ class ConversationManager:
             logger.error("TTS request failed: %s", e)
             return None
 
-    async def _build_context(self) -> str:
-        """Build context string, optionally including camera description."""
+    async def _build_context(self) -> tuple[str, str | None]:
+        """Build context, returning (text_context, image_base64 or None)."""
         if self._camera is None:
-            return ""
+            return "", None
         jpeg = self._camera.get_jpeg()
         if jpeg is None:
-            return ""
-        b64 = base64.b64encode(jpeg).decode()
-        return f"[Camera frame available as base64 JPEG: {b64[:100]}... ({len(b64)} chars total)]"
+            return "", None
+        image_b64 = base64.b64encode(jpeg).decode()
+        return "[Camera frame attached]", image_b64
 
     async def _execute_command(self, cmd: dict) -> None:
         """Execute a brain command by publishing to the event bus."""

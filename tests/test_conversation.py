@@ -1,5 +1,7 @@
 """Tests for the conversation manager."""
 
+import base64
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
@@ -80,3 +82,31 @@ async def test_text_interaction_no_server(bus: EventBus):
     result = await mgr.handle_text_interaction("hello")
     # Should get a fallback reply (brain server is down)
     assert "reply" in result or "error" in result
+
+
+async def test_build_context_no_camera(bus: EventBus):
+    mgr = ConversationManager(bus=bus)
+    context, image = await mgr._build_context()
+    assert context == ""
+    assert image is None
+
+
+async def test_build_context_no_frame(bus: EventBus):
+    mock_camera = MagicMock()
+    mock_camera.get_jpeg.return_value = None
+    mgr = ConversationManager(bus=bus, camera=mock_camera)
+    context, image = await mgr._build_context()
+    assert context == ""
+    assert image is None
+
+
+async def test_build_context_with_frame(bus: EventBus):
+    fake_jpeg = b"\xff\xd8\xff\xe0test_image_data"
+    mock_camera = MagicMock()
+    mock_camera.get_jpeg.return_value = fake_jpeg
+    mgr = ConversationManager(bus=bus, camera=mock_camera)
+    context, image = await mgr._build_context()
+    assert context == "[Camera frame attached]"
+    assert image is not None
+    # Verify it's valid base64 that decodes back to original
+    assert base64.b64decode(image) == fake_jpeg
