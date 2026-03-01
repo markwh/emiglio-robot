@@ -4,10 +4,12 @@
 
 The locomotion base is the black plastic GP Toys platform that forms the robot's bottom section. It contains the existing drive system: two DC motors driving the main wheels independently (differential drive), plus stabilizer wheels for balance. This is the most mechanically complete section of the robot — the motors and gearbox are already in place from the original toy.
 
+The base also includes **two D-cell battery cases** (4 D batteries total) and a **12V DC input port** from the original toy — both reusable for motor power.
+
 The main assembly work here is:
 1. Reconnect the existing motors to new wiring (originals were clipped)
 2. Mount the TB6612FNG motor driver board
-3. Mount or route the 4xAA battery pack for motor power
+3. Wire the existing D-cell battery cases (or 12V port) to the TB6612FNG for motor power
 4. Establish the cable interface between the base and the body above
 
 ### Reference Frames
@@ -86,27 +88,23 @@ The main assembly work here is:
 
 **Alternative:** Mount the TB6612FNG in the body instead, on the breadboard with the Pi. This simplifies the base (only raw motor wires come up) but means longer motor power wires and more cables between base and body. **Recommended: mount in the base.**
 
-### 2. 4xAA Battery Pack (Motor Power)
+### 2. D-Cell Batteries / 12V DC Port (Motor Power)
 
-**What it is:** A holder for 4 AA batteries providing ~6V to power the motors through the TB6612FNG.
+**What's already there:** The base has two D-cell battery cases (4 D cells total) and a 12V DC input port, both from the original toy. These provide motor power.
 
-**Position:** Inside the base, in the available space next to or below the motors.
+**D-cell advantages over AA:** D cells have ~5-10x the capacity of AAs (~12,000 mAh vs. ~2,000 mAh) and handle high current draws from motors much better. Reusing the existing cases means no new battery holder needed.
 
-**Why separate power:** Motors draw high current with spikes during stall/startup. Separate battery power isolates the Pi from motor noise and voltage drops. The TB6612FNG's VM (motor voltage) pin connects to the battery pack, while its VCC (logic voltage) connects to 3.3V from the Pi.
+**Why separate power:** Motors draw high current with spikes during stall/startup. Separate battery power isolates the Pi from motor noise and voltage drops. The TB6612FNG's VM (motor voltage) pin connects to the battery supply, while its VCC (logic voltage) connects to 3.3V from the Pi.
 
-**Mounting approach:**
-- Check if the original battery compartment exists (many vintage toys had one in the base)
-- If yes, reuse it — just wire it to the TB6612FNG VM pin
-- If no built-in compartment, mount the 4xAA holder with double-sided tape or Velcro on the base interior floor
-- Velcro is preferable — makes battery changes easy without opening the base
-- Route battery wires to the TB6612FNG board
-
-**Alternative power:** A small LiPo pack with a voltage regulator could replace AAs for longer runtime, but adds charging complexity. AAs are simpler for v1.0.
+**Power options:**
+1. **D-cell batteries** (portable, already installed) — trace the wiring to determine voltage (likely 6V if 4 cells in series)
+2. **12V DC adapter** through the existing port (unlimited runtime for bench testing) — verify the port wiring goes to the motor circuit
+3. **Both** — use batteries for mobile testing, 12V adapter for bench sessions
 
 **Measurements needed:**
+- [ ] Battery case wiring: series (6V) or parallel (3V)? — trace wires or measure with multimeter
+- [ ] 12V port wiring: where do its leads connect?
 - [ ] Available space in base interior next to motors (L x W x H in mm)
-- [ ] Whether original toy had a battery compartment in the base
-- [ ] 4xAA holder dimensions vs. available space
 
 ### 3. Motor Wires (Existing)
 

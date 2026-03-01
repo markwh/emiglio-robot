@@ -47,11 +47,11 @@ This document covers the electrical connections for the locomotion base: motors 
     │   │ BO1 ────→ Motor R terminal + │               │
     │   │ BO2 ────→ Motor R terminal - │               │
     │   │                              │               │
-    │   │ VM ←──── Battery + (6V)      │               │
+    │   │ VM ←──── Battery + (6V from D cells)      │               │
     │   │ GND ←─── Battery - (GND)    │               │
     │   └──────────────────────────────┘               │
     │                                                  │
-    │   4xAA Battery Pack                              │
+    │   D-Cell Battery Pack                              │
     │   ┌──────────────┐                               │
     │   │ + (6V) ──→ VM│                               │
     │   │ - (GND) ─→ GND + Pi GND (common ground)     │
@@ -64,7 +64,7 @@ This document covers the electrical connections for the locomotion base: motors 
 
 | TB6612FNG Pin | Connects To | Wire Gauge | Notes |
 |---------------|-------------|------------|-------|
-| **VM** | Battery + (6V) | 22 AWG | Motor supply voltage. Must match motor rating. |
+| **VM** | Battery + (6V from D cells) | 22 AWG | Motor supply voltage. Must match motor rating. |
 | **VCC** | Pi 3.3V | 26 AWG | Logic supply. Determines logic HIGH level. |
 | **GND** | Pi GND + Battery GND | 22 AWG | **Common ground is critical** — both power sources must share ground. |
 | **STBY** | Tied to VCC (3.3V) | 26 AWG | Standby pin — tie HIGH to enable the driver. Can connect to GPIO for software sleep mode (v2.0). |

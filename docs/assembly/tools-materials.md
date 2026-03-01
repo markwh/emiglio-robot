@@ -65,8 +65,7 @@
 | Item | Qty | Purpose |
 |------|-----|---------|
 | TB6612FNG motor driver breakout | 1 | Dual H-bridge for 2 DC motors |
-| 4xAA battery holder | 1 | 6V motor power supply |
-| AA batteries | 4 | Motor power |
+| D batteries | 4 | Motor power (existing cases in base) |
 | 10-position screw terminal block | 1 | Base-to-body connector (prototyping) |
 | Velcro strips (adhesive) | 1 pair | Secure battery holder for easy removal |
 | Silicone grease (small tube) | 1 | Gearbox lubrication if noisy |
@@ -90,12 +89,14 @@ Per project overview and Elegoo starter kit:
 - [x] Emiglio robot chassis (head, body, base)
 - [x] Existing speaker in head (needs testing)
 - [x] Existing DC motors in base (needs wire prep)
+- [x] D-cell battery cases in base (2 cases, 4 cells total)
+- [x] 12V DC input port on base
 - [x] LEDs and resistors (Elegoo kit)
 - [x] Breadboard and jumper wires (Elegoo kit)
 - [ ] Raspberry Pi 5 (on order)
 - [ ] TB6612FNG motor driver (to purchase)
 - [ ] PAM8403 amplifier (to purchase)
-- [ ] 4xAA battery holder (to purchase)
+- [ ] D batteries x4 (to purchase — for existing cases in base)
 - [ ] USB webcam (to purchase — look for compact/board style)
 - [ ] USB microphone (to purchase)
 - [ ] JST-XH connectors (to purchase)
