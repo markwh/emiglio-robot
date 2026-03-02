@@ -27,3 +27,6 @@ camera_test_snapshot.jpg
 # local-only folders
 context/
 
+# Generated per-worktree instructions (source-of-truth in docs/workstreams/)
+WORKTREE.md
+

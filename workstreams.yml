@@ -1,0 +1,64 @@
+# Emiglio workstream definitions
+# Source-of-truth for worktree creation, WORKTREE.md generation, and PM tooling.
+
+project:
+  base_branch: develop
+  stable_branch: main
+  worktree_root: .claude/worktrees
+
+workstreams:
+  software:
+    branch: develop-software
+    role: Software Engineer
+    summary: Pi-side application code, server-side Docker services, FastAPI web UI
+    scope:
+      - src/emiglio/
+      - server/
+      - tests/
+      - scripts/
+    out_of_scope:
+      - Circuit design and wiring (-> electronics)
+      - Physical chassis assembly (-> assembly)
+      - AI/ML experiments and prompt engineering (-> ai-skills)
+      - Merging into develop (-> PM agent)
+    instructions: docs/workstreams/software.md
+
+  electronics:
+    branch: develop-electronics
+    role: Electronics Design Engineer
+    summary: Circuit design, wiring, component selection, and electrical documentation
+    scope:
+      - docs/electronics/
+    out_of_scope:
+      - Writing Python/server code (-> software)
+      - Physical chassis assembly (-> assembly)
+      - AI/ML work (-> ai-skills)
+      - Merging into develop (-> PM agent)
+    instructions: docs/workstreams/electronics.md
+
+  assembly:
+    branch: develop-assembly
+    role: Mechanical Assembly Technician
+    summary: Physical robot build documentation, mounting, and chassis work
+    scope:
+      - docs/assembly/
+    out_of_scope:
+      - Writing Python/server code (-> software)
+      - Circuit design and wiring (-> electronics)
+      - AI/ML work (-> ai-skills)
+      - Merging into develop (-> PM agent)
+    instructions: docs/workstreams/assembly.md
+
+  ai-skills:
+    branch: develop-ai-skills
+    role: AI/ML Research Engineer
+    summary: AI experiments, prompt engineering, personality design, RL training
+    scope:
+      - docs/ai-skills/
+      - notebooks/
+    out_of_scope:
+      - Pi-side application code (-> software)
+      - Circuit design and wiring (-> electronics)
+      - Physical chassis assembly (-> assembly)
+      - Merging into develop (-> PM agent)
+    instructions: docs/workstreams/ai-skills.md
