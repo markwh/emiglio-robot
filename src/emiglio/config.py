@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     server_tts_url: str = "http://localhost:8002"
     server_brain_url: str = "http://localhost:8003"
 
+    # RL navigation
+    rl_nav_model: str = ""  # model name for RL-driven navigation skills
+
     # Camera
     camera_index: int = 0
     camera_width: int = 640

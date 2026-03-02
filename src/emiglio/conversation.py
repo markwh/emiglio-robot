@@ -22,6 +22,9 @@ from emiglio.vision.camera import Camera
 
 logger = logging.getLogger(__name__)
 
+# Navigation skills that can be driven by RL policy (waypoint-navigable)
+_RL_NAV_SKILLS = {"patrol", "circle", "zigzag", "rush", "pentagram"}
+
 # Movement presets: direction → (left, right) motor speeds
 MOVE_PRESETS = {
     "forward": (0.6, 0.6),
@@ -37,7 +40,7 @@ MOVE_DURATION = 1.0  # seconds to hold a movement command
 DEFAULT_SPEED_FACTOR = 1.0
 DEFAULT_MOVE_DURATION = 1.0
 COMPOUND_BASE_SPEED = 0.6
-COMPOUND_MOVES = {"spin", "wiggle", "dance", "patrol", "circle", "zigzag", "rush"}
+COMPOUND_MOVES = {"spin", "wiggle", "dance", "patrol", "circle", "zigzag", "rush", "pentagram"}
 
 # Per-skill default durations (override DEFAULT_MOVE_DURATION when LLM omits duration)
 SKILL_DURATION_DEFAULTS: dict[str, float] = {
@@ -45,6 +48,7 @@ SKILL_DURATION_DEFAULTS: dict[str, float] = {
     "circle": 4.5,
     "zigzag": 3.0,
     "rush": 3.0,
+    "pentagram": 5.0,
     "dance": 2.0,
 }
 
@@ -81,6 +85,7 @@ class ConversationManager:
         brain: BrainClient | None = None,
         stt: STTClient | None = None,
         tts: TTSClient | None = None,
+        policy_executor=None,
     ) -> None:
         self._bus = bus
         self._camera = camera
@@ -89,6 +94,7 @@ class ConversationManager:
         self._brain = brain
         self._stt = stt
         self._tts = tts
+        self._policy = policy_executor
         self._client = httpx.AsyncClient(timeout=30.0)
         self._busy = False
 
@@ -287,8 +293,31 @@ class ConversationManager:
                 MotorCommand(left=0, right=0),
             )
 
+    async def _execute_rl_nav(self, params: str, speed_factor: float, duration: float) -> None:
+        """Execute a navigation skill via RL policy waypoints."""
+        from emiglio.rl.waypoints import WAYPOINT_GENERATORS
+
+        gen = WAYPOINT_GENERATORS[params]
+        waypoints = gen(speed_factor=speed_factor, duration=duration)
+        logger.info("RL nav: %s → %d waypoints", params, len(waypoints))
+        await self._policy.navigate_waypoints(
+            waypoints, speed_factor=speed_factor, timeout_per_wp=duration,
+        )
+
     async def _execute_compound(self, params: str, speed_factor: float, duration: float) -> None:
         """Execute a compound expressive movement."""
+        # Try RL-driven navigation for waypoint-navigable skills
+        if params in _RL_NAV_SKILLS and self._policy and self._policy.available:
+            try:
+                await self._execute_rl_nav(params, speed_factor, duration)
+                return
+            except Exception:
+                logger.warning(
+                    "RL nav failed for %s, falling back to hardcoded",
+                    params,
+                    exc_info=True,
+                )
+
         if params == "spin":
             await self._execute_spin(speed_factor, duration)
         elif params == "wiggle":

@@ -74,6 +74,11 @@
                     <button class="skill-btn" data-skill="spin">Spin</button>
                     <button class="skill-btn" data-skill="wiggle">Wiggle</button>
                     <button class="skill-btn" data-skill="dance">Dance</button>
+                    <button class="skill-btn nav-skill" data-skill="patrol">Patrol</button>
+                    <button class="skill-btn nav-skill" data-skill="circle">Circle</button>
+                    <button class="skill-btn nav-skill" data-skill="zigzag">Zigzag</button>
+                    <button class="skill-btn nav-skill" data-skill="rush">Rush</button>
+                    <button class="skill-btn nav-skill" data-skill="pentagram">Pentagram</button>
                 </div>
                 <div id="skill-params">
                     <div class="skill-param-row">
@@ -93,11 +98,22 @@
                 <span class="section-title">RL Training</span>
                 <div id="training-controls">
                     <button id="training-toggle-btn">Start Training</button>
+                    <select id="training-env-type" title="Training environment">
+                        <option value="nav" selected>Nav (4-skill)</option>
+                        <option value="legacy">Legacy (8-skill)</option>
+                    </select>
                     <select id="training-speed">
                         <option value="1" selected>Live</option>
                         <option value="10">Fast</option>
                         <option value="100">Turbo</option>
                     </select>
+                </div>
+                <div id="randomization-row">
+                    <label id="rand-toggle"><input type="checkbox" id="rand-enabled"> Domain Randomization</label>
+                    <div id="rand-slider-row" class="hidden">
+                        <input type="range" id="rand-strength" min="0" max="100" step="5" value="50">
+                        <span id="rand-strength-val">0.50</span>
+                    </div>
                 </div>
                 <div id="training-stats">
                     <div class="train-stat"><span class="train-stat-label">Episode</span><span class="train-stat-val" id="ts-episode">0</span></div>
@@ -106,6 +122,19 @@
                     <div class="train-stat"><span class="train-stat-label">Avg Dist</span><span class="train-stat-val" id="ts-dist">-</span></div>
                 </div>
                 <canvas id="reward-chart" width="460" height="80"></canvas>
+                <div id="model-panel">
+                    <span class="panel-label">Models</span>
+                    <div id="model-select-row">
+                        <select id="model-select"><option value="">No models</option></select>
+                        <button id="model-refresh-btn" title="Refresh model list">Refresh</button>
+                    </div>
+                    <div id="model-actions">
+                        <button id="model-save-btn" disabled>Save Current</button>
+                        <button id="model-resume-btn" disabled>Resume Training</button>
+                        <button id="model-inference-btn" disabled>Run Inference</button>
+                    </div>
+                    <div id="model-meta" class="hidden"></div>
+                </div>
             </section>
 
             <section id="camera-section">
