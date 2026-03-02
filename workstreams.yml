@@ -62,3 +62,19 @@ workstreams:
       - Physical chassis assembly (-> assembly)
       - Merging into develop (-> PM agent)
     instructions: docs/workstreams/ai-skills.md
+
+  observability:
+    branch: develop-observability
+    role: LLM Observability Engineer
+    summary: LLM call tracing, evaluation, cost tracking, and prompt performance analysis
+    scope:
+      - src/emiglio/observability/
+      - docs/observability/
+      - notebooks/eval/
+    out_of_scope:
+      - Robot application code and motor control (-> software)
+      - Circuit design and wiring (-> electronics)
+      - Physical chassis assembly (-> assembly)
+      - Prompt authoring and personality design (-> ai-skills)
+      - Merging into develop (-> PM agent)
+    instructions: docs/workstreams/observability.md
