@@ -105,6 +105,15 @@ def cmd_merge(args: argparse.Namespace) -> None:
     merge_workstream(manifest, name, repo_root)
 
 
+def cmd_shell_init(args: argparse.Namespace) -> None:
+    """Print bash snippet for per-worktree terminal colors."""
+    from emiglio_pm.shell_init import generate_shell_init
+
+    repo_root = find_repo_root()
+    manifest = load_manifest(repo_root)
+    print(generate_shell_init(manifest, repo_root))
+
+
 def cmd_rebase_all(args: argparse.Namespace) -> None:
     """Rebase all worktree branches onto base."""
     from emiglio_pm.git_ops import rebase_all
@@ -136,6 +145,8 @@ def main() -> None:
 
     sub.add_parser("rebase-all", help="Rebase all worktree branches onto base")
 
+    sub.add_parser("shell-init", help="Print bash snippet for terminal colors")
+
     args = parser.parse_args()
 
     commands = {
@@ -145,6 +156,7 @@ def main() -> None:
         "sync-all": cmd_sync_all,
         "merge": cmd_merge,
         "rebase-all": cmd_rebase_all,
+        "shell-init": cmd_shell_init,
     }
 
     commands[args.command](args)
