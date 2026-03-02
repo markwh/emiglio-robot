@@ -3,10 +3,13 @@
 import io
 import logging
 import wave
+from pathlib import Path
 
 import httpx
 
 logger = logging.getLogger(__name__)
+
+VOICE_SAVE_PATH = Path.home() / ".config" / "emiglio" / "tts_voice_id"
 
 
 class TTSClient:
@@ -19,7 +22,7 @@ class TTSClient:
         model_id: str = "eleven_flash_v2_5",
     ) -> None:
         self._mode = mode
-        self._voice_id = voice_id
+        self._voice_id = self._load_voice_id() or voice_id
         self._model_id = model_id
         self._elevenlabs = None
         self._http = None
@@ -54,9 +57,30 @@ class TTSClient:
         return self._model_id
 
     def set_voice(self, voice_id: str) -> None:
-        """Change the active voice for all future synthesis calls."""
+        """Change the active voice for all future synthesis calls and persist to disk."""
         self._voice_id = voice_id
-        logger.info("TTS: voice changed to %s", voice_id)
+        self._save_voice_id(voice_id)
+        logger.info("TTS: voice changed to %s (saved)", voice_id)
+
+    @staticmethod
+    def _save_voice_id(voice_id: str) -> None:
+        try:
+            VOICE_SAVE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            VOICE_SAVE_PATH.write_text(voice_id.strip())
+        except Exception as e:
+            logger.warning("TTS: failed to save voice_id: %s", e)
+
+    @staticmethod
+    def _load_voice_id() -> str | None:
+        try:
+            if VOICE_SAVE_PATH.exists():
+                saved = VOICE_SAVE_PATH.read_text().strip()
+                if saved:
+                    logger.info("TTS: loaded saved voice_id=%s", saved)
+                    return saved
+        except Exception as e:
+            logger.warning("TTS: failed to load saved voice_id: %s", e)
+        return None
 
     async def list_voices(self) -> list[dict]:
         """Return simplified voice info from ElevenLabs API."""
