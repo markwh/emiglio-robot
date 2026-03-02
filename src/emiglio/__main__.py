@@ -79,6 +79,7 @@ def main() -> None:
         mode=settings.tts_mode,
         voice_id=settings.tts_voice_id,
         model_id=settings.tts_model_id,
+        robot_effect=settings.tts_robot_effect,
     )
 
     # -- Brain --

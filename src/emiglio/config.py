@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     tts_mode: str = "inline"
     tts_voice_id: str = "21m00Tcm4TlvDq8ikWAM"  # Rachel
     tts_model_id: str = "eleven_flash_v2_5"
+    tts_robot_effect: bool = True  # lo-fi downsample + bit crush
 
     # Brain mode: "inline" (direct API call) or "server" (HTTP to Docker service)
     brain_mode: str = "inline"
