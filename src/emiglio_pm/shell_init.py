@@ -18,32 +18,38 @@ def generate_shell_init(manifest: Manifest, repo_root: Path) -> str:
     repo = repo_root.resolve()
     wt_root = repo / manifest.project.worktree_root
 
-    # Build path->color mapping; worktrees first (longer paths), then repo root
-    entries: list[tuple[str, str, str]] = []
+    # Build path->color+port mapping; worktrees first (longer paths), then repo root
+    entries: list[tuple[str, str, str, int]] = []
     for name, ws in manifest.workstreams.items():
-        if ws.color:
+        if ws.color or ws.port:
             wt_path = wt_root / name
-            entries.append((str(wt_path), ws.color, name))
+            entries.append((str(wt_path), ws.color, name, ws.port))
 
     # Sort longest path first so worktrees match before repo root
     entries.sort(key=lambda e: len(e[0]), reverse=True)
 
     # Build case arms
     case_arms = []
-    for path, color, name in entries:
+    for path, color, name, port in entries:
+        port_line = f'            _emiglio_port="{port}"\n' if port else ''
         case_arms.append(
             f'        {path}/*)\n'
             f'            _emiglio_bg="{color}"\n'
             f'            _emiglio_title="emiglio [{name}]"\n'
+            f'{port_line}'
             f'            ;;'
         )
 
     # Repo root (develop branch)
-    if manifest.project.develop_color:
+    develop_color = manifest.project.develop_color
+    develop_port = manifest.project.develop_port
+    if develop_color or develop_port:
+        port_line = f'            _emiglio_port="{develop_port}"\n' if develop_port else ''
         case_arms.append(
             f'        {repo}/*)\n'
-            f'            _emiglio_bg="{manifest.project.develop_color}"\n'
+            f'            _emiglio_bg="{develop_color}"\n'
             f'            _emiglio_title="emiglio [develop]"\n'
+            f'{port_line}'
             f'            ;;'
         )
 
@@ -52,6 +58,7 @@ def generate_shell_init(manifest: Manifest, repo_root: Path) -> str:
         '        *)\n'
         '            _emiglio_bg="reset"\n'
         '            _emiglio_title=""\n'
+        '            _emiglio_port=""\n'
         '            ;;'
     )
 
@@ -65,7 +72,7 @@ def generate_shell_init(manifest: Manifest, repo_root: Path) -> str:
 _emiglio_prev_bg=""
 
 _emiglio_prompt_hook() {{
-    local _emiglio_bg _emiglio_title
+    local _emiglio_bg _emiglio_title _emiglio_port
     case "${{PWD}}/" in
 {case_block}
     esac
@@ -80,6 +87,13 @@ _emiglio_prompt_hook() {{
             printf '\\e]0;%s\\a' "$_emiglio_title"
         fi
         _emiglio_prev_bg="$_emiglio_bg"
+    fi
+
+    # Export or unset EMIGLIO_WEB_PORT
+    if [[ -n "$_emiglio_port" ]]; then
+        export EMIGLIO_WEB_PORT="$_emiglio_port"
+    else
+        unset EMIGLIO_WEB_PORT
     fi
 }}
 

@@ -6,11 +6,13 @@ project:
   stable_branch: main
   worktree_root: .claude/worktrees
   develop_color: "#1e1e3a"
+  develop_port: 8080
 
 workstreams:
   software:
     branch: develop-software
     color: "#1a1a2e"
+    port: 8081
     role: Software Engineer
     summary: Pi-side application code, server-side Docker services, FastAPI web UI
     scope:
@@ -28,6 +30,7 @@ workstreams:
   electronics:
     branch: develop-electronics
     color: "#1a2e1a"
+    port: 8082
     role: Electronics Design Engineer
     summary: Circuit design, wiring, component selection, and electrical documentation
     scope:
@@ -42,6 +45,7 @@ workstreams:
   assembly:
     branch: develop-assembly
     color: "#2e1a1a"
+    port: 8083
     role: Mechanical Assembly Technician
     summary: Physical robot build documentation, mounting, and chassis work
     scope:
@@ -56,6 +60,7 @@ workstreams:
   ai-skills:
     branch: develop-ai-skills
     color: "#1a2e2e"
+    port: 8084
     role: AI/ML Research Engineer
     summary: AI experiments, prompt engineering, personality design, RL training
     scope:
@@ -71,6 +76,7 @@ workstreams:
   observability:
     branch: develop-observability
     color: "#2e2e1a"
+    port: 8085
     role: LLM Observability Engineer
     summary: LLM call tracing, evaluation, cost tracking, and prompt performance analysis
     scope:

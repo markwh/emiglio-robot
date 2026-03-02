@@ -15,6 +15,7 @@ class ProjectConfig:
     stable_branch: str
     worktree_root: str
     develop_color: str = ""
+    develop_port: int = 0
 
 
 @dataclass
@@ -27,6 +28,7 @@ class Workstream:
     out_of_scope: list[str] = field(default_factory=list)
     instructions: str = ""
     color: str = ""
+    port: int = 0
 
 
 @dataclass
@@ -80,6 +82,7 @@ def load_manifest(repo_root: Path | None = None) -> Manifest:
         stable_branch=proj["stable_branch"],
         worktree_root=proj["worktree_root"],
         develop_color=proj.get("develop_color", ""),
+        develop_port=proj.get("develop_port", 0),
     )
 
     workstreams: dict[str, Workstream] = {}
@@ -93,6 +96,7 @@ def load_manifest(repo_root: Path | None = None) -> Manifest:
             out_of_scope=ws.get("out_of_scope", []),
             instructions=ws.get("instructions", ""),
             color=ws.get("color", ""),
+            port=ws.get("port", 0),
         )
 
     return Manifest(project=project, workstreams=workstreams)
