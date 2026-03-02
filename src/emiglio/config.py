@@ -44,5 +44,11 @@ class Settings(BaseSettings):
     camera_width: int = 640
     camera_height: int = 480
 
+    # Observability / tracing
+    tracing_enabled: bool = False
+    tracing_backend: str = "langsmith"
+    langsmith_api_key: str = ""
+    langsmith_project: str = "emiglio"
+
 
 settings = Settings()

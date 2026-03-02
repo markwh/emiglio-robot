@@ -9,6 +9,8 @@ import logging
 
 import httpx
 
+from langsmith import traceable
+
 from emiglio.brain import BrainClient
 from emiglio.config import settings
 from emiglio.event_bus import EventBus
@@ -70,6 +72,7 @@ class ConversationManager:
     def busy(self) -> bool:
         return self._busy
 
+    @traceable(name="voice_interaction")
     async def handle_voice_interaction(self, status_callback=None) -> dict:
         """Run one full voice interaction cycle.
 
@@ -131,6 +134,7 @@ class ConversationManager:
         finally:
             self._busy = False
 
+    @traceable(name="text_interaction")
     async def handle_text_interaction(self, text: str, status_callback=None) -> dict:
         """Process a text input (typed, not spoken) through the brain.
 
@@ -173,12 +177,14 @@ class ConversationManager:
         finally:
             self._busy = False
 
+    @traceable(name="stt_transcribe")
     async def _transcribe(self, wav_bytes: bytes) -> str:
         """Transcribe audio via STTClient or direct HTTP fallback."""
         if self._stt is not None:
             return await self._stt.transcribe(wav_bytes, server_url=settings.server_stt_url)
         return ""
 
+    @traceable(name="brain_think")
     async def _think(self, transcript: str, context: str = "", image_base64: str | None = None) -> dict:
         """Call the brain (inline API or server, depending on config)."""
         if self._brain is not None:
@@ -201,6 +207,7 @@ class ConversationManager:
             logger.error("Brain request failed: %s", e)
             return {"reply": "Sorry, my brain isn't responding right now.", "commands": []}
 
+    @traceable(name="tts_synthesize")
     async def _synthesize(self, text: str) -> bytes | None:
         """Synthesize speech via TTSClient."""
         if self._tts is not None:
