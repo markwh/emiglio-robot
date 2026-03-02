@@ -36,7 +36,10 @@ def test_tool_to_command_all_are_move_actions():
 
 def test_tool_to_command_params_match_conversation_presets():
     """Params must be one of the directions/compound moves conversation.py expects."""
-    valid_params = {"forward", "backward", "left", "right", "stop", "spin", "wiggle", "dance"}
+    valid_params = {
+        "forward", "backward", "left", "right", "stop",
+        "spin", "wiggle", "dance", "patrol", "circle", "zigzag", "rush",
+    }
     for name, cmd in TOOL_TO_COMMAND.items():
         assert cmd["params"] in valid_params, f"{name} has params={cmd['params']}"
 
@@ -249,6 +252,17 @@ def test_parse_commands_compound_with_duration():
     clean, commands = parse_commands(text)
     assert commands[0]["params"] == "spin"
     assert commands[0]["duration"] == pytest.approx(2.0)
+
+
+@pytest.mark.parametrize("skill", ["patrol", "circle", "zigzag", "rush"])
+def test_parse_commands_new_compound_moves(skill):
+    """New compound skills should parse correctly from [COMMAND:move:...] format."""
+    text = f"Here I go! [COMMAND:move:{skill}]"
+    clean, commands = parse_commands(text)
+    assert len(commands) == 1
+    assert commands[0]["action"] == "move"
+    assert commands[0]["params"] == skill
+    assert "Here I go!" in clean
 
 
 # --- extract_commands with tool args tests ---

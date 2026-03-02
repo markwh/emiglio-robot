@@ -13,6 +13,8 @@ from emiglio.conversation import (
     COMPOUND_MOVES,
     DEFAULT_SPEED_FACTOR,
     DEFAULT_MOVE_DURATION,
+    SKILL_DURATION_DEFAULTS,
+    _RL_NAV_SKILLS,
 )
 
 
@@ -257,3 +259,187 @@ async def test_duration_clamped(bus: EventBus):
     # speed clamped to 0.1: 0.6 * 0.1 = 0.06
     assert received[0].left == pytest.approx(0.06)
     # duration clamped to 0.1 (MIN_DURATION)
+
+
+# --- Higher-level movement skill tests ---
+
+
+async def test_execute_patrol(bus: EventBus):
+    """Patrol should produce forward+turn sequences then stop."""
+    mgr = ConversationManager(bus=bus)
+    received = []
+
+    async def capture(data):
+        received.append(data)
+
+    bus.subscribe(Events.MOTOR_COMMAND, capture)
+
+    await mgr._execute_command({"action": "move", "params": "patrol", "duration": 1.0})
+
+    # 4 legs × (forward + turn) + final stop = 9 commands
+    assert len(received) == 9
+    # Last command is stop
+    assert received[-1].left == pytest.approx(0.0)
+    assert received[-1].right == pytest.approx(0.0)
+    # First command should be forward (both positive)
+    assert received[0].left > 0
+    assert received[0].right > 0
+    # Second command should be a right turn (left positive, right negative)
+    assert received[1].left > 0
+    assert received[1].right < 0
+
+
+async def test_execute_circle(bus: EventBus):
+    """Circle should produce a single differential command then stop."""
+    mgr = ConversationManager(bus=bus)
+    received = []
+
+    async def capture(data):
+        received.append(data)
+
+    bus.subscribe(Events.MOTOR_COMMAND, capture)
+
+    await mgr._execute_command({"action": "move", "params": "circle", "duration": 0.1})
+
+    # Move + stop = 2 commands
+    assert len(received) == 2
+    # Left motor should be faster than right (curves right)
+    assert received[0].left > received[0].right
+    assert received[0].left > 0
+    assert received[0].right > 0
+    # Stopped
+    assert received[1].left == pytest.approx(0.0)
+    assert received[1].right == pytest.approx(0.0)
+
+
+async def test_execute_zigzag(bus: EventBus):
+    """Zigzag should produce alternating arc commands then stop."""
+    mgr = ConversationManager(bus=bus)
+    received = []
+
+    async def capture(data):
+        received.append(data)
+
+    bus.subscribe(Events.MOTOR_COMMAND, capture)
+
+    await mgr._execute_command({"action": "move", "params": "zigzag", "duration": 0.9})
+
+    # 0.9s / 0.4s steps = ~3 arc commands + final stop = 4
+    assert len(received) >= 3
+    # Last command is stop
+    assert received[-1].left == pytest.approx(0.0)
+    assert received[-1].right == pytest.approx(0.0)
+    # First arc veers right: left > right
+    assert received[0].left > received[0].right
+    # Second arc veers left: right > left
+    assert received[1].right > received[1].left
+
+
+async def test_execute_rush(bus: EventBus):
+    """Rush should produce full-power forward then stop."""
+    mgr = ConversationManager(bus=bus)
+    received = []
+
+    async def capture(data):
+        received.append(data)
+
+    bus.subscribe(Events.MOTOR_COMMAND, capture)
+
+    await mgr._execute_command({"action": "move", "params": "rush", "duration": 0.1})
+
+    # Move + stop = 2 commands
+    assert len(received) == 2
+    # Full power (1.0 × default speed_factor 1.0)
+    assert received[0].left == pytest.approx(1.0)
+    assert received[0].right == pytest.approx(1.0)
+    # Stopped
+    assert received[1].left == pytest.approx(0.0)
+    assert received[1].right == pytest.approx(0.0)
+
+
+async def test_skill_duration_defaults(bus: EventBus):
+    """When duration is omitted, skill-specific defaults should apply."""
+    mgr = ConversationManager(bus=bus)
+    received = []
+
+    async def capture(data):
+        received.append(data)
+
+    bus.subscribe(Events.MOTOR_COMMAND, capture)
+
+    # Verify the constants are as expected
+    assert SKILL_DURATION_DEFAULTS["patrol"] == 4.0
+    assert SKILL_DURATION_DEFAULTS["circle"] == 4.5
+    assert SKILL_DURATION_DEFAULTS["zigzag"] == 3.0
+    assert SKILL_DURATION_DEFAULTS["rush"] == 3.0
+    assert SKILL_DURATION_DEFAULTS["dance"] == 2.0
+
+    # Verify that unlisted skills still default to DEFAULT_MOVE_DURATION
+    assert "forward" not in SKILL_DURATION_DEFAULTS
+    assert "spin" not in SKILL_DURATION_DEFAULTS
+
+
+# --- RL navigation integration tests ---
+
+
+async def test_rl_nav_used_when_policy_available(bus: EventBus):
+    """When a policy executor is available, patrol should use RL nav."""
+    mock_policy = MagicMock()
+    mock_policy.available = True
+    mock_policy.navigate_waypoints = AsyncMock(return_value=True)
+
+    mgr = ConversationManager(bus=bus, policy_executor=mock_policy)
+    await mgr._execute_command({"action": "move", "params": "patrol", "duration": 1.0})
+
+    mock_policy.navigate_waypoints.assert_awaited_once()
+    args = mock_policy.navigate_waypoints.call_args
+    # Should have passed waypoints list
+    assert len(args[0][0]) == 4  # patrol produces 4 waypoints
+
+
+async def test_rl_nav_fallback_without_policy(bus: EventBus):
+    """Without a policy, patrol should fall back to hardcoded implementation."""
+    mgr = ConversationManager(bus=bus)  # no policy_executor
+    received = []
+
+    async def capture(data):
+        received.append(data)
+
+    bus.subscribe(Events.MOTOR_COMMAND, capture)
+    await mgr._execute_command({"action": "move", "params": "patrol", "duration": 1.0})
+
+    # Should have used hardcoded patrol (4 legs × forward+turn + stop = 9 commands)
+    assert len(received) == 9
+
+
+async def test_rl_nav_fallback_on_error(bus: EventBus):
+    """If RL nav raises, should fall back to hardcoded skill."""
+    mock_policy = MagicMock()
+    mock_policy.available = True
+    mock_policy.navigate_waypoints = AsyncMock(side_effect=RuntimeError("model error"))
+
+    mgr = ConversationManager(bus=bus, policy_executor=mock_policy)
+    received = []
+
+    async def capture(data):
+        received.append(data)
+
+    bus.subscribe(Events.MOTOR_COMMAND, capture)
+    await mgr._execute_command({"action": "move", "params": "patrol", "duration": 1.0})
+
+    # Should have fallen back to hardcoded patrol
+    assert len(received) == 9
+
+
+async def test_expressive_skills_ignore_policy(bus: EventBus):
+    """Spin, wiggle, dance should NOT use RL policy even when available."""
+    mock_policy = MagicMock()
+    mock_policy.available = True
+    mock_policy.navigate_waypoints = AsyncMock()
+
+    mgr = ConversationManager(bus=bus, policy_executor=mock_policy)
+
+    for skill in ("spin", "wiggle", "dance"):
+        mock_policy.navigate_waypoints.reset_mock()
+        await mgr._execute_command({"action": "move", "params": skill, "duration": 0.2})
+        mock_policy.navigate_waypoints.assert_not_awaited()

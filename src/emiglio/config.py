@@ -23,12 +23,14 @@ class Settings(BaseSettings):
 
     # STT mode: "inline" (local whisper) or "server" (HTTP to Docker service)
     stt_mode: str = "inline"
-    stt_model: str = "base"
+    stt_model: str = "small"
+    stt_language: str = "en"
 
     # TTS mode: "inline" (direct ElevenLabs API) or "server" (HTTP to Docker service)
     tts_mode: str = "inline"
     tts_voice_id: str = "21m00Tcm4TlvDq8ikWAM"  # Rachel
     tts_model_id: str = "eleven_flash_v2_5"
+    tts_robot_effect: bool = True  # lo-fi downsample + bit crush
 
     # Brain mode: "inline" (direct API call) or "server" (HTTP to Docker service)
     brain_mode: str = "inline"
@@ -39,10 +41,19 @@ class Settings(BaseSettings):
     server_tts_url: str = "http://localhost:8002"
     server_brain_url: str = "http://localhost:8003"
 
+    # RL navigation
+    rl_nav_model: str = ""  # model name for RL-driven navigation skills
+
     # Camera
     camera_index: int = 0
     camera_width: int = 640
     camera_height: int = 480
+
+    # Observability / tracing
+    tracing_enabled: bool = False
+    tracing_backend: str = "langsmith"
+    langsmith_api_key: str = ""
+    langsmith_project: str = "emiglio"
 
 
 settings = Settings()

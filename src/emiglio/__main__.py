@@ -1,13 +1,31 @@
 """Emiglio robot entry point. Wires subsystems and starts the web server."""
 
+import os
+import sys
+
+# Guard: if the venv Python was created while conda was active, its RPATH
+# pulls in conda's outdated libstdc++, breaking system libs like libjack.
+# Detect this and warn early, before native imports fail silently.
+_python_real = os.path.realpath(sys.executable)
+if "miniconda" in _python_real or "anaconda" in _python_real:
+    print(
+        f"WARNING: This virtualenv uses conda's Python ({_python_real}).\n"
+        "Native libraries (audio, etc.) may fail due to conda's bundled libstdc++.\n"
+        "Fix: deactivate conda, delete .venv, and run 'uv sync' to recreate it.\n",
+        file=sys.stderr,
+    )
+
 import logging
 import signal
-import sys
 
 import uvicorn
 
-from emiglio.brain import BrainClient
 from emiglio.config import settings
+from emiglio.observability import configure_tracing
+
+_tracing_active = configure_tracing()
+
+from emiglio.brain import BrainClient
 from emiglio.event_bus import EventBus
 from emiglio.locomotion.controller import LocomotionController
 from emiglio.stt import STTClient
@@ -58,17 +76,28 @@ def main() -> None:
         logger.warning("Audio subsystem unavailable: %s", e)
 
     # -- STT --
-    stt = STTClient(mode=settings.stt_mode, model=settings.stt_model)
+    stt = STTClient(mode=settings.stt_mode, model=settings.stt_model, language=settings.stt_language)
 
     # -- TTS --
     tts = TTSClient(
         mode=settings.tts_mode,
         voice_id=settings.tts_voice_id,
         model_id=settings.tts_model_id,
+        robot_effect=settings.tts_robot_effect,
     )
 
     # -- Brain --
     brain = BrainClient(mode=settings.brain_mode, model=settings.brain_model)
+
+    # -- RL navigation policy (optional) --
+    policy_executor = None
+    if settings.rl_nav_model:
+        from emiglio.rl.policy_executor import PolicyExecutor
+
+        policy_executor = PolicyExecutor(bus=bus)
+        if not policy_executor.load_model(settings.rl_nav_model):
+            logger.warning("RL nav model '%s' not found — using hardcoded skills", settings.rl_nav_model)
+            policy_executor = None
 
     # -- Conversation --
     conversation = ConversationManager(
@@ -79,6 +108,7 @@ def main() -> None:
         brain=brain,
         stt=stt,
         tts=tts,
+        policy_executor=policy_executor,
     )
 
     # -- Web app --
@@ -107,6 +137,8 @@ def main() -> None:
     subsystems.append(f"stt ({settings.stt_mode})" if stt.available else "stt (off)")
     subsystems.append(f"tts ({settings.tts_mode})" if tts.available else "tts (off)")
     subsystems.append(f"brain ({settings.brain_mode})" if brain.available else "brain (off)")
+    subsystems.append(f"tracing ({settings.langsmith_project})" if _tracing_active else "tracing (off)")
+    subsystems.append(f"rl-nav ({settings.rl_nav_model})" if policy_executor else "rl-nav (off)")
     logger.info("Subsystems: %s", ", ".join(subsystems))
     logger.info("Web UI: http://%s:%d", settings.web_host, settings.web_port)
 

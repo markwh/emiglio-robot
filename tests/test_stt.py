@@ -46,16 +46,19 @@ async def test_transcribe_inline():
 
     mock_whisper = _make_mock_whisper(mock_model)
     with patch.dict(sys.modules, {"whisper": mock_whisper}):
-        client = STTClient(mode="inline", model="base")
+        client = STTClient(mode="inline", model="base", language="en")
 
     wav_bytes = b"RIFF\x00\x00\x00\x00WAVEfmt fake wav data"
     result = await client.transcribe(wav_bytes)
 
     assert result == "Hello, world!"
     mock_model.transcribe.assert_called_once()
+    call_args = mock_model.transcribe.call_args
     # Verify the tempfile path was passed
-    call_args = mock_model.transcribe.call_args[0]
-    assert call_args[0].endswith(".wav")
+    assert call_args[0][0].endswith(".wav")
+    # Verify language and prompt are passed
+    assert call_args[1]["language"] == "en"
+    assert "Emiglio" in call_args[1]["initial_prompt"]
 
 
 async def test_transcribe_server():

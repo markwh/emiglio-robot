@@ -5,9 +5,10 @@ import wave
 import io
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import numpy as np
 import pytest
 
-from emiglio.tts import TTSClient
+from emiglio.tts import TTSClient, robotize_wav
 
 
 def _make_mock_elevenlabs():
@@ -57,7 +58,7 @@ async def test_synthesize_inline():
     mock_client.text_to_speech.convert = fake_convert
 
     with patch.dict(sys.modules, {"elevenlabs": mock_module}):
-        client = TTSClient(mode="inline", voice_id="v1", model_id="m1")
+        client = TTSClient(mode="inline", voice_id="v1", model_id="m1", robot_effect=False)
 
     result = await client.synthesize("Hello world")
     assert result is not None
@@ -74,7 +75,7 @@ async def test_synthesize_inline():
 
 async def test_synthesize_server():
     """Server synthesis POSTs to the TTS endpoint."""
-    client = TTSClient(mode="server")
+    client = TTSClient(mode="server", robot_effect=False)
 
     fake_wav = b"RIFF\x00\x00\x00\x00WAVEfmt fake wav"
     mock_resp = MagicMock()
@@ -155,9 +156,140 @@ async def test_synthesize_with_voice_override():
 def test_set_voice():
     """set_voice() updates the voice_id property."""
     mock_module, mock_client = _make_mock_elevenlabs()
-    with patch.dict(sys.modules, {"elevenlabs": mock_module}):
+    with (
+        patch.dict(sys.modules, {"elevenlabs": mock_module}),
+        patch("emiglio.tts.TTSClient._load_voice_id", return_value=None),
+        patch("emiglio.tts.TTSClient._save_voice_id"),
+    ):
         client = TTSClient(mode="inline", voice_id="original", model_id="m1")
 
     assert client.voice_id == "original"
-    client.set_voice("new-voice")
+    with patch("emiglio.tts.TTSClient._save_voice_id"):
+        client.set_voice("new-voice")
     assert client.voice_id == "new-voice"
+
+
+def _make_wav(samples: np.ndarray, sr: int = 22050) -> bytes:
+    """Helper: wrap int16 numpy array in WAV bytes."""
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(sr)
+        wf.writeframes(samples.tobytes())
+    return buf.getvalue()
+
+
+def test_robotize_wav_returns_valid_wav():
+    """robotize_wav() returns valid WAV with same format."""
+    samples = np.sin(np.linspace(0, 2 * np.pi * 440, 22050)) * 16000
+    samples = samples.astype(np.int16)
+    wav_in = _make_wav(samples)
+
+    wav_out = robotize_wav(wav_in, pitch_shift=1.0)
+    buf = io.BytesIO(wav_out)
+    with wave.open(buf, "rb") as wf:
+        assert wf.getnchannels() == 1
+        assert wf.getsampwidth() == 2
+        assert wf.getframerate() == 22050
+        assert wf.getnframes() == len(samples)
+
+
+def test_robotize_wav_modifies_audio():
+    """robotize_wav() actually changes the audio data."""
+    samples = np.sin(np.linspace(0, 2 * np.pi * 440, 22050)) * 16000
+    samples = samples.astype(np.int16)
+    wav_in = _make_wav(samples)
+
+    wav_out = robotize_wav(wav_in)
+
+    buf = io.BytesIO(wav_out)
+    with wave.open(buf, "rb") as wf:
+        out_samples = np.frombuffer(wf.readframes(wf.getnframes()), dtype=np.int16)
+    assert not np.array_equal(samples, out_samples)
+
+
+def test_robotize_wav_bit_crush():
+    """Bit crush zeroes the low bits of samples."""
+    samples = np.array([0x7FFF, 0x1234, -0x5678], dtype=np.int16)
+    wav_in = _make_wav(samples)
+
+    wav_out = robotize_wav(wav_in, downsample=1, bit_depth=8)
+
+    buf = io.BytesIO(wav_out)
+    with wave.open(buf, "rb") as wf:
+        out = np.frombuffer(wf.readframes(wf.getnframes()), dtype=np.int16)
+    # With bit_depth=8, shift=8, low 8 bits should be zero
+    for s in out:
+        assert int(s) & 0xFF == 0
+
+
+def test_robotize_wav_pitch_shift():
+    """pitch_shift > 1.0 raises the output sample rate."""
+    samples = np.sin(np.linspace(0, 2 * np.pi * 440, 22050)) * 16000
+    samples = samples.astype(np.int16)
+    wav_in = _make_wav(samples, sr=22050)
+
+    wav_out = robotize_wav(wav_in, downsample=1, bit_depth=16, pitch_shift=1.1)
+    buf = io.BytesIO(wav_out)
+    with wave.open(buf, "rb") as wf:
+        assert wf.getframerate() == int(22050 * 1.1)
+        assert wf.getnframes() == len(samples)
+
+
+async def test_synthesize_applies_robot_effect():
+    """synthesize() applies robot effect when enabled."""
+    # Use varied sample data so the effect is observable
+    samples = np.sin(np.linspace(0, 2 * np.pi * 440, 600)) * 16000
+    pcm = samples.astype(np.int16).tobytes()
+
+    async def fake_convert(**kwargs):
+        yield pcm
+
+    mock_module, mock_client = _make_mock_elevenlabs()
+    mock_client.text_to_speech.convert = fake_convert
+
+    with patch.dict(sys.modules, {"elevenlabs": mock_module}):
+        client = TTSClient(mode="inline", voice_id="v1", model_id="m1", robot_effect=True)
+
+    result = await client.synthesize("Hello")
+    assert result is not None
+
+    # The raw PCM without effect
+    raw_wav = io.BytesIO()
+    with wave.open(raw_wav, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(22050)
+        wf.writeframes(pcm)
+    no_effect = raw_wav.getvalue()
+
+    assert result != no_effect
+
+
+async def test_synthesize_skips_robot_effect_when_disabled():
+    """synthesize() returns unmodified WAV when robot_effect=False."""
+    pcm = b"\x00\x10" * 200
+
+    async def fake_convert(**kwargs):
+        yield pcm
+
+    mock_module, mock_client = _make_mock_elevenlabs()
+    mock_client.text_to_speech.convert = fake_convert
+
+    with patch.dict(sys.modules, {"elevenlabs": mock_module}):
+        client = TTSClient(mode="inline", voice_id="v1", model_id="m1", robot_effect=False)
+
+    result = await client.synthesize("Hello")
+    assert result is not None
+
+    # Should match unprocessed WAV
+    raw_wav = io.BytesIO()
+    with wave.open(raw_wav, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(22050)
+        wf.writeframes(pcm)
+    expected = raw_wav.getvalue()
+
+    assert result == expected

@@ -1,0 +1,92 @@
+# Emiglio workstream definitions
+# Source-of-truth for worktree creation, WORKTREE.md generation, and PM tooling.
+
+project:
+  base_branch: develop
+  stable_branch: main
+  worktree_root: .claude/worktrees
+  develop_color: "#1e1e3a"
+  develop_port: 8080
+
+workstreams:
+  software:
+    branch: develop-software
+    color: "#1a1a2e"
+    port: 8081
+    role: Software Engineer
+    summary: Pi-side application code, server-side Docker services, FastAPI web UI
+    scope:
+      - src/emiglio/
+      - server/
+      - tests/
+      - scripts/
+    out_of_scope:
+      - Circuit design and wiring (-> electronics)
+      - Physical chassis assembly (-> assembly)
+      - AI/ML experiments and prompt engineering (-> ai-skills)
+      - Merging into develop (-> PM agent)
+    instructions: docs/workstreams/software.md
+
+  electronics:
+    branch: develop-electronics
+    color: "#1a2e1a"
+    port: 8082
+    role: Electronics Design Engineer
+    summary: Circuit design, wiring, component selection, and electrical documentation
+    scope:
+      - docs/electronics/
+    out_of_scope:
+      - Writing Python/server code (-> software)
+      - Physical chassis assembly (-> assembly)
+      - AI/ML work (-> ai-skills)
+      - Merging into develop (-> PM agent)
+    instructions: docs/workstreams/electronics.md
+
+  assembly:
+    branch: develop-assembly
+    color: "#2e1a1a"
+    port: 8083
+    role: Mechanical Assembly Technician
+    summary: Physical robot build documentation, mounting, and chassis work
+    scope:
+      - docs/assembly/
+    out_of_scope:
+      - Writing Python/server code (-> software)
+      - Circuit design and wiring (-> electronics)
+      - AI/ML work (-> ai-skills)
+      - Merging into develop (-> PM agent)
+    instructions: docs/workstreams/assembly.md
+
+  ai-skills:
+    branch: develop-ai-skills
+    color: "#1a2e2e"
+    port: 8084
+    role: AI/ML Research Engineer
+    summary: AI experiments, prompt engineering, personality design, RL training
+    scope:
+      - docs/ai-skills/
+      - notebooks/
+    out_of_scope:
+      - Pi-side application code (-> software)
+      - Circuit design and wiring (-> electronics)
+      - Physical chassis assembly (-> assembly)
+      - Merging into develop (-> PM agent)
+    instructions: docs/workstreams/ai-skills.md
+
+  observability:
+    branch: develop-observability
+    color: "#2e2e1a"
+    port: 8085
+    role: LLM Observability Engineer
+    summary: LLM call tracing, evaluation, cost tracking, and prompt performance analysis
+    scope:
+      - src/emiglio/observability/
+      - docs/observability/
+      - notebooks/eval/
+    out_of_scope:
+      - Robot application code and motor control (-> software)
+      - Circuit design and wiring (-> electronics)
+      - Physical chassis assembly (-> assembly)
+      - Prompt authoring and personality design (-> ai-skills)
+      - Merging into develop (-> PM agent)
+    instructions: docs/workstreams/observability.md

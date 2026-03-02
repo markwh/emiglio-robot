@@ -32,6 +32,7 @@
   const vlText = document.getElementById("voicelab-text");
   const vlPreviewBtn = document.getElementById("voicelab-preview-btn");
   const vlActivateBtn = document.getElementById("voicelab-activate-btn");
+  const vlCustomId = document.getElementById("voicelab-custom-id");
   const vlStatus = document.getElementById("voicelab-status");
   const vlAudio = document.getElementById("voicelab-audio");
 
@@ -149,6 +150,20 @@
         c.lineTo(robot.trail[i].x, robot.trail[i].y);
         c.stroke();
       }
+    }
+
+    // Goal marker (pulsing orange circle)
+    if (goalMarker) {
+      const pulse = 0.7 + 0.3 * Math.sin(Date.now() / 200);
+      c.beginPath();
+      c.arc(goalMarker.x, goalMarker.y, 30, 0, Math.PI * 2);
+      c.strokeStyle = `rgba(255, 152, 0, ${pulse * 0.6})`;
+      c.lineWidth = 2;
+      c.stroke();
+      c.beginPath();
+      c.arc(goalMarker.x, goalMarker.y, 8, 0, Math.PI * 2);
+      c.fillStyle = `rgba(255, 152, 0, ${pulse})`;
+      c.fill();
     }
 
     // Robot
@@ -303,6 +318,7 @@
       statusEl.className = "status connected";
       startSending();
       addEventEntry("system", "Connected to server");
+      requestModelList();
     };
     ws.onclose = () => {
       statusEl.textContent = "Disconnected";
@@ -350,6 +366,18 @@
       updateSubsystems(data);
     } else if (data.type === "event") {
       addEventEntry(data.event, data.detail || "");
+    } else if (data.type === "training_status") {
+      onTrainingStatus(data.running);
+    } else if (data.type === "training_stats") {
+      onTrainingStats(data);
+    } else if (data.type === "training_episode") {
+      onTrainingStats(data);
+      startReplay(data.trajectory, data.goal);
+    } else if (data.type === "model_list") {
+      onModelList(data.models);
+    } else if (data.type === "model_saved") {
+      addEventEntry("training", "Model saved: " + data.name);
+      requestModelList();
     }
   }
 
@@ -367,9 +395,12 @@
     return div.innerHTML;
   }
 
+  let joystickActive = false; // true while user is dragging the joystick
+
   function startSending() {
     if (sendTimer) return;
     sendTimer = setInterval(() => {
+      if (!joystickActive) return; // don't flood (0,0) when idle
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(
           JSON.stringify({
@@ -471,6 +502,7 @@
   let dragging = false;
   canvas.addEventListener("mousedown", (e) => {
     dragging = true;
+    joystickActive = true;
     handleJoystickMove(e.clientX, e.clientY);
   });
   window.addEventListener("mousemove", (e) => {
@@ -479,14 +511,20 @@
   window.addEventListener("mouseup", () => {
     if (dragging) {
       dragging = false;
+      joystickActive = false;
       currentJoy = { x: 0, y: 0 };
       drawJoystick(0, 0);
+      // Send one explicit stop so robot halts
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "joystick", x: 0, y: 0 }));
+      }
     }
   });
 
   // Touch events
   canvas.addEventListener("touchstart", (e) => {
     e.preventDefault();
+    joystickActive = true;
     const t = e.touches[0];
     handleJoystickMove(t.clientX, t.clientY);
   });
@@ -497,8 +535,13 @@
   });
   canvas.addEventListener("touchend", (e) => {
     e.preventDefault();
+    joystickActive = false;
     currentJoy = { x: 0, y: 0 };
     drawJoystick(0, 0);
+    // Send one explicit stop so robot halts
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "joystick", x: 0, y: 0 }));
+    }
   });
 
   // Stop button
@@ -603,6 +646,177 @@
   loadCameraDevices();
   loadVoices();
 
+  // ========== RL Training ==========
+
+  const trainingToggleBtn = document.getElementById("training-toggle-btn");
+  const trainingEnvTypeSel = document.getElementById("training-env-type");
+  const trainingSpeedSel = document.getElementById("training-speed");
+  const tsEpisode = document.getElementById("ts-episode");
+  const tsReward = document.getElementById("ts-reward");
+  const tsGoals = document.getElementById("ts-goals");
+  const tsDist = document.getElementById("ts-dist");
+  const rewardCanvas = document.getElementById("reward-chart");
+  const rewardCtx = rewardCanvas.getContext("2d");
+
+  // Randomization controls
+  const randEnabledChk = document.getElementById("rand-enabled");
+  const randSliderRow = document.getElementById("rand-slider-row");
+  const randStrengthInput = document.getElementById("rand-strength");
+  const randStrengthVal = document.getElementById("rand-strength-val");
+
+  // Model management
+  const modelSelect = document.getElementById("model-select");
+  const modelRefreshBtn = document.getElementById("model-refresh-btn");
+  const modelSaveBtn = document.getElementById("model-save-btn");
+  const modelResumeBtn = document.getElementById("model-resume-btn");
+  const modelInferenceBtn = document.getElementById("model-inference-btn");
+  const modelMeta = document.getElementById("model-meta");
+
+  let trainingRunning = false;
+  let goalCount = 0;
+  let rewardHistory = [];
+  const REWARD_HISTORY_MAX = 100;
+
+  // Goal marker for simulator overlay
+  let goalMarker = null; // {x, y} or null
+
+  // Replay state
+  let replayTimer = null;
+  let replayTrajectory = null;
+  let replayIndex = 0;
+
+  function getRandomizationStrength() {
+    if (!randEnabledChk.checked) return 0.0;
+    return parseInt(randStrengthInput.value, 10) / 100;
+  }
+
+  function toggleTraining() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (trainingRunning) {
+      ws.send(JSON.stringify({ type: "training_stop" }));
+    } else {
+      const interval = parseInt(trainingSpeedSel.value, 10);
+      ws.send(JSON.stringify({
+        type: "training_start",
+        total_timesteps: 100000,
+        demo_interval: interval,
+        learning_rate: 0.0003,
+        randomization_strength: getRandomizationStrength(),
+        env_type: trainingEnvTypeSel.value,
+      }));
+    }
+  }
+
+  function onTrainingStatus(running) {
+    trainingRunning = running;
+    if (running) {
+      trainingToggleBtn.textContent = "Stop Training";
+      trainingToggleBtn.classList.add("running");
+      modelSaveBtn.disabled = false;
+      goalCount = 0;
+      rewardHistory = [];
+    } else {
+      trainingToggleBtn.textContent = "Start Training";
+      trainingToggleBtn.classList.remove("running");
+      modelSaveBtn.disabled = true;
+      stopReplay();
+      requestModelList();
+    }
+  }
+
+  function onTrainingStats(data) {
+    tsEpisode.textContent = data.episode;
+    tsReward.textContent = data.reward.toFixed(3);
+    tsDist.textContent = data.dist_to_goal >= 0 ? data.dist_to_goal.toFixed(0) : "-";
+    if (data.goal_reached) {
+      goalCount++;
+      tsGoals.textContent = goalCount;
+    }
+    rewardHistory.push(data.reward);
+    if (rewardHistory.length > REWARD_HISTORY_MAX) {
+      rewardHistory.shift();
+    }
+    drawRewardChart();
+  }
+
+  function startReplay(trajectory, goal) {
+    stopReplay();
+    if (!trajectory || trajectory.length === 0) return;
+    goalMarker = { x: goal[0], y: goal[1] };
+    replayTrajectory = trajectory;
+    replayIndex = 0;
+    robot.trail = [];
+
+    // Pace to ~2s total regardless of trajectory length
+    const interval = Math.max(5, Math.floor(2000 / trajectory.length));
+    replayTimer = setInterval(() => {
+      if (replayIndex >= replayTrajectory.length) {
+        stopReplay();
+        return;
+      }
+      const pt = replayTrajectory[replayIndex];
+      robot.x = pt[0];
+      robot.y = pt[1];
+      robot.trail.push({ x: pt[0], y: pt[1] });
+      replayIndex++;
+    }, interval);
+  }
+
+  function stopReplay() {
+    if (replayTimer) {
+      clearInterval(replayTimer);
+      replayTimer = null;
+    }
+    replayTrajectory = null;
+  }
+
+  function drawRewardChart() {
+    const c = rewardCtx;
+    const W = rewardCanvas.width;
+    const H = rewardCanvas.height;
+    c.clearRect(0, 0, W, H);
+    c.fillStyle = "#16213e";
+    c.fillRect(0, 0, W, H);
+
+    if (rewardHistory.length < 2) return;
+
+    const minR = Math.min(...rewardHistory);
+    const maxR = Math.max(...rewardHistory);
+    const range = maxR - minR || 1;
+    const pad = 4;
+
+    // Zero line
+    if (minR < 0 && maxR > 0) {
+      const zy = H - pad - ((0 - minR) / range) * (H - 2 * pad);
+      c.strokeStyle = "#334";
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(0, zy);
+      c.lineTo(W, zy);
+      c.stroke();
+    }
+
+    // Reward curve
+    c.strokeStyle = "#00d4ff";
+    c.lineWidth = 1.5;
+    c.beginPath();
+    for (let i = 0; i < rewardHistory.length; i++) {
+      const x = (i / (rewardHistory.length - 1)) * W;
+      const y = H - pad - ((rewardHistory[i] - minR) / range) * (H - 2 * pad);
+      if (i === 0) c.moveTo(x, y);
+      else c.lineTo(x, y);
+    }
+    c.stroke();
+  }
+
+  trainingToggleBtn.addEventListener("click", toggleTraining);
+  trainingSpeedSel.addEventListener("change", () => {
+    if (ws && ws.readyState === WebSocket.OPEN && trainingRunning) {
+      const interval = parseInt(trainingSpeedSel.value, 10);
+      ws.send(JSON.stringify({ type: "training_config", demo_interval: interval }));
+    }
+  });
+
   // ========== Skills ==========
 
   const skillBtns = document.querySelectorAll(".skill-btn");
@@ -657,6 +871,108 @@
     btn.addEventListener("click", () => sendSkill(btn.dataset.skill));
   });
 
+  // Randomization controls
+  randEnabledChk.addEventListener("change", () => {
+    if (randEnabledChk.checked) {
+      randSliderRow.classList.remove("hidden");
+    } else {
+      randSliderRow.classList.add("hidden");
+    }
+  });
+  randStrengthInput.addEventListener("input", () => {
+    randStrengthVal.textContent = (parseInt(randStrengthInput.value, 10) / 100).toFixed(2);
+  });
+
+  // Model management
+  function requestModelList() {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "model_list" }));
+    }
+  }
+
+  function onModelList(models) {
+    modelSelect.innerHTML = "";
+    if (!models || models.length === 0) {
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = "No models";
+      opt.disabled = true;
+      modelSelect.appendChild(opt);
+      modelResumeBtn.disabled = true;
+      modelInferenceBtn.disabled = true;
+      modelMeta.classList.add("hidden");
+      return;
+    }
+    models.forEach((m) => {
+      const opt = document.createElement("option");
+      opt.value = m.name;
+      const date = new Date(m.timestamp * 1000);
+      const dateStr = date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      opt.textContent = m.name + " (" + dateStr + ")";
+      modelSelect.appendChild(opt);
+    });
+    modelResumeBtn.disabled = false;
+    modelInferenceBtn.disabled = false;
+    _lastModelList = models;
+    updateModelMeta(models);
+  }
+
+  function updateModelMeta(models) {
+    const name = modelSelect.value;
+    const m = models ? models.find((x) => x.name === name) : null;
+    if (!m) {
+      modelMeta.classList.add("hidden");
+      return;
+    }
+    const date = new Date(m.timestamp * 1000);
+    const envLabel = m.env_type === "nav" ? "Nav" : "Legacy";
+    modelMeta.innerHTML =
+      envLabel + " | Steps: " + m.total_timesteps +
+      " | Episodes: " + m.episodes +
+      " | Reward: " + (m.mean_reward || 0).toFixed(2) +
+      " | Goals: " + ((m.goal_rate || 0) * 100).toFixed(0) + "%" +
+      (m.randomization_strength > 0 ? " | Rand: " + m.randomization_strength.toFixed(2) : "");
+    modelMeta.classList.remove("hidden");
+  }
+
+  let _lastModelList = null;
+  modelSelect.addEventListener("change", () => updateModelMeta(_lastModelList));
+
+  modelRefreshBtn.addEventListener("click", requestModelList);
+
+  modelSaveBtn.addEventListener("click", () => {
+    const name = prompt("Model name:", "model_" + Date.now());
+    if (!name) return;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "model_save", name: name }));
+    }
+  });
+
+  modelResumeBtn.addEventListener("click", () => {
+    const name = modelSelect.value;
+    if (!name || trainingRunning) return;
+    const interval = parseInt(trainingSpeedSel.value, 10);
+    ws.send(JSON.stringify({
+      type: "training_start",
+      total_timesteps: 100000,
+      demo_interval: interval,
+      learning_rate: 0.0003,
+      randomization_strength: getRandomizationStrength(),
+      resume_from: name,
+      env_type: trainingEnvTypeSel.value,
+    }));
+  });
+
+  modelInferenceBtn.addEventListener("click", () => {
+    const name = modelSelect.value;
+    if (!name || trainingRunning) return;
+    ws.send(JSON.stringify({
+      type: "model_inference",
+      name: name,
+      episodes: 5,
+    }));
+  });
+
   // Simulator controls
   simResetBtn.addEventListener("click", () => {
     resetRobot();
@@ -664,6 +980,11 @@
   });
 
   // ========== Voice Lab ==========
+
+  function getEffectiveVoiceId() {
+    const custom = vlCustomId.value.trim();
+    return custom || vlSelect.value;
+  }
 
   async function loadVoices() {
     vlStatus.textContent = "Loading voices...";
@@ -676,6 +997,7 @@
       }
       vlVoices = data.voices || [];
       vlActiveVoiceId = data.active_voice_id || "";
+      vlCustomId.value = vlActiveVoiceId;
 
       vlSelect.innerHTML = "";
       if (vlVoices.length === 0) {
@@ -744,7 +1066,7 @@
   }
 
   async function previewVoice() {
-    const voiceId = vlSelect.value;
+    const voiceId = getEffectiveVoiceId();
     const text = vlText.value.trim();
     if (!voiceId || !text) {
       vlStatus.textContent = "Select a voice and enter sample text";
@@ -780,7 +1102,7 @@
   }
 
   async function activateVoice() {
-    const voiceId = vlSelect.value;
+    const voiceId = getEffectiveVoiceId();
     if (!voiceId) return;
     vlActivateBtn.disabled = true;
     vlStatus.textContent = "Activating...";

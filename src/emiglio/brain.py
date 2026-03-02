@@ -35,15 +35,19 @@ Available commands:
 - [COMMAND:move:stop] — stop moving
 - [COMMAND:move:spin] — spin in place (fun and expressive)
 - [COMMAND:move:wiggle] — wiggle back and forth (playful)
-- [COMMAND:move:dance] — do a little dance (celebratory)
+- [COMMAND:move:dance] — do a little dance (celebratory, default 2.0s)
+- [COMMAND:move:patrol] — drive a rectangular loop (default 4.0s)
+- [COMMAND:move:circle] — drive in a circle (default 4.5s)
+- [COMMAND:move:zigzag] — zigzag forward with lateral sweeps (default 3.0s)
+- [COMMAND:move:rush] — full-speed straight line, covers lots of ground (default 3.0s)
 - [COMMAND:speak:text] — speak the text (automatic for your response text)
 
 You can add optional speed and duration modifiers to any move command:
 - speed: a number from 0.1 to 1.0 (default 1.0). Example: [COMMAND:move:forward,speed=0.5]
-- duration: seconds from 0.1 to 5.0 (default 1.0). Example: [COMMAND:move:forward,duration=2.0]
+- duration: seconds from 0.1 to 5.0 (default 1.0 for basic moves, higher for skills — see defaults above). Example: [COMMAND:move:forward,duration=2.0]
 - Both: [COMMAND:move:forward,speed=0.8,duration=2.0]
 
-Use spin, wiggle, and dance to express excitement, happiness, or celebration. Use slower speeds for gentler, more cautious movement.
+Use spin, wiggle, and dance to express excitement, happiness, or celebration. Use patrol, circle, zigzag, and rush for covering ground and navigating. Use slower speeds for gentler, more cautious movement.
 
 Include movement commands when they are a natural part of fulfilling a request. Do not add commands unless the situation calls for them.
 
@@ -103,7 +107,8 @@ class BrainClient:
         if mode == "inline":
             try:
                 from anthropic import AsyncAnthropic
-                self._anthropic = AsyncAnthropic()
+                from emiglio.observability import wrap_anthropic_client
+                self._anthropic = wrap_anthropic_client(AsyncAnthropic())
                 logger.info("Brain: inline mode (model=%s)", model)
             except Exception as e:
                 logger.warning("Brain: failed to create Anthropic client: %s", e)
