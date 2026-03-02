@@ -12,9 +12,15 @@ logger = logging.getLogger(__name__)
 class STTClient:
     """Transcribes audio via local Whisper (inline) or HTTP (server mode)."""
 
-    def __init__(self, mode: str = "inline", model: str = "base") -> None:
+    # Domain vocabulary hint — helps Whisper spell robot-specific words correctly.
+    INITIAL_PROMPT = "Emiglio, forward, backward, left, right, spin, wiggle, dance, stop."
+
+    def __init__(
+        self, mode: str = "inline", model: str = "small", language: str = "en"
+    ) -> None:
         self._mode = mode
         self._model_name = model
+        self._language = language
         self._whisper_model = None
         self._http = None
 
@@ -23,7 +29,7 @@ class STTClient:
                 import whisper
 
                 self._whisper_model = whisper.load_model(model)
-                logger.info("STT: inline mode (model=%s)", model)
+                logger.info("STT: inline mode (model=%s, language=%s)", model, language)
             except Exception as e:
                 logger.warning("STT: failed to load Whisper model: %s", e)
         elif mode == "server":
@@ -54,7 +60,11 @@ class STTClient:
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as f:
                 f.write(wav_bytes)
                 f.flush()
-                result = self._whisper_model.transcribe(f.name)
+                result = self._whisper_model.transcribe(
+                    f.name,
+                    language=self._language,
+                    initial_prompt=self.INITIAL_PROMPT,
+                )
             return result.get("text", "").strip()
 
         try:
