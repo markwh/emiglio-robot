@@ -1,8 +1,22 @@
 """Emiglio robot entry point. Wires subsystems and starts the web server."""
 
+import os
+import sys
+
+# Guard: if the venv Python was created while conda was active, its RPATH
+# pulls in conda's outdated libstdc++, breaking system libs like libjack.
+# Detect this and warn early, before native imports fail silently.
+_python_real = os.path.realpath(sys.executable)
+if "miniconda" in _python_real or "anaconda" in _python_real:
+    print(
+        f"WARNING: This virtualenv uses conda's Python ({_python_real}).\n"
+        "Native libraries (audio, etc.) may fail due to conda's bundled libstdc++.\n"
+        "Fix: deactivate conda, delete .venv, and run 'uv sync' to recreate it.\n",
+        file=sys.stderr,
+    )
+
 import logging
 import signal
-import sys
 
 import uvicorn
 
