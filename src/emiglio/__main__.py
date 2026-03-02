@@ -72,7 +72,7 @@ def main() -> None:
         logger.warning("Audio subsystem unavailable: %s", e)
 
     # -- STT --
-    stt = STTClient(mode=settings.stt_mode, model=settings.stt_model)
+    stt = STTClient(mode=settings.stt_mode, model=settings.stt_model, language=settings.stt_language)
 
     # -- TTS --
     tts = TTSClient(

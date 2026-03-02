@@ -23,7 +23,8 @@ class Settings(BaseSettings):
 
     # STT mode: "inline" (local whisper) or "server" (HTTP to Docker service)
     stt_mode: str = "inline"
-    stt_model: str = "base"
+    stt_model: str = "small"
+    stt_language: str = "en"
 
     # TTS mode: "inline" (direct ElevenLabs API) or "server" (HTTP to Docker service)
     tts_mode: str = "inline"
