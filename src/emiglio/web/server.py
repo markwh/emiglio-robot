@@ -21,6 +21,7 @@ from emiglio.locomotion.controller import LocomotionController
 from emiglio.vision.camera import Camera
 from emiglio.vision.stream import stream_response
 from emiglio.conversation import ConversationManager
+from emiglio.rl.training import TrainingManager, TrainingStats, TrainingEpisode
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,8 @@ def create_app(
 ) -> FastAPI:
     app = FastAPI(title="Emiglio Robot")
     connected_clients: set[WebSocket] = set()
+    training_mgr = TrainingManager()
+    _training_broadcast_task: asyncio.Task | None = None
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
@@ -181,6 +184,51 @@ def create_app(
         conversation._tts.set_voice(req.voice_id)
         return {"ok": True, "active_voice_id": conversation._tts.voice_id}
 
+    async def _broadcast_training() -> None:
+        """Drain the training queue and send updates to all WS clients."""
+        nonlocal _training_broadcast_task
+        mgr = training_mgr
+        try:
+            while mgr.running or not mgr.queue.empty():
+                try:
+                    item = await asyncio.wait_for(mgr.queue.get(), timeout=0.2)
+                except asyncio.TimeoutError:
+                    continue
+
+                if item is None:  # sentinel — training thread finished
+                    break
+
+                if isinstance(item, TrainingEpisode):
+                    # Downsample trajectory to max 200 points
+                    traj = item.trajectory
+                    if len(traj) > 200:
+                        step = len(traj) / 200
+                        traj = [traj[int(i * step)] for i in range(200)]
+                    await _broadcast({
+                        "type": "training_episode",
+                        "episode": item.stats.episode,
+                        "reward": round(item.stats.reward, 3),
+                        "length": item.stats.length,
+                        "goal_reached": item.stats.goal_reached,
+                        "dist_to_goal": round(item.stats.dist_to_goal, 1),
+                        "trajectory": [[round(x, 1), round(y, 1)] for x, y, _ in traj],
+                        "goal": [round(item.goal[0], 1), round(item.goal[1], 1)],
+                    })
+                elif isinstance(item, TrainingStats):
+                    await _broadcast({
+                        "type": "training_stats",
+                        "episode": item.episode,
+                        "reward": round(item.reward, 3),
+                        "length": item.length,
+                        "goal_reached": item.goal_reached,
+                        "dist_to_goal": round(item.dist_to_goal, 1),
+                    })
+        except Exception:
+            logger.exception("Training broadcast error")
+        finally:
+            await _broadcast({"type": "training_status", "running": False})
+            _training_broadcast_task = None
+
     @app.websocket("/ws")
     async def websocket_endpoint(ws: WebSocket):
         await ws.accept()
@@ -275,6 +323,28 @@ def create_app(
                             conversation, ws, send_status_text, voice=False, text=text
                         )
                     )
+
+                elif msg_type == "training_start":
+                    nonlocal _training_broadcast_task
+                    if training_mgr.running:
+                        await ws.send_json({"type": "status", "message": "Training already running"})
+                        continue
+                    total = int(data.get("total_timesteps", 100_000))
+                    interval = int(data.get("demo_interval", 1))
+                    lr = float(data.get("learning_rate", 3e-4))
+                    await training_mgr.start_training(total, interval, lr)
+                    await _broadcast({"type": "training_status", "running": True})
+                    await _broadcast_event("training", f"Started (timesteps={total}, interval={interval})")
+                    _training_broadcast_task = asyncio.create_task(_broadcast_training())
+
+                elif msg_type == "training_stop":
+                    training_mgr.stop_training()
+                    await _broadcast_event("training", "Stop requested")
+
+                elif msg_type == "training_config":
+                    interval = int(data.get("demo_interval", 1))
+                    training_mgr.set_demo_interval(interval)
+                    await _broadcast_event("training", f"Demo interval → {interval}")
 
                 else:
                     logger.warning("Unknown WebSocket message type: %s", msg_type)

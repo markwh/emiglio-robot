@@ -6,6 +6,7 @@ Flow: mic capture → STT (server) → brain (server) → TTS (server) → speak
 import asyncio
 import base64
 import logging
+import math
 
 import httpx
 
@@ -36,7 +37,30 @@ MOVE_DURATION = 1.0  # seconds to hold a movement command
 DEFAULT_SPEED_FACTOR = 1.0
 DEFAULT_MOVE_DURATION = 1.0
 COMPOUND_BASE_SPEED = 0.6
-COMPOUND_MOVES = {"spin", "wiggle", "dance"}
+COMPOUND_MOVES = {"spin", "wiggle", "dance", "patrol", "circle", "zigzag", "rush"}
+
+# Per-skill default durations (override DEFAULT_MOVE_DURATION when LLM omits duration)
+SKILL_DURATION_DEFAULTS: dict[str, float] = {
+    "patrol": 4.0,
+    "circle": 4.5,
+    "zigzag": 3.0,
+    "rush": 3.0,
+    "dance": 2.0,
+}
+
+# Differential-drive geometry for compound skills
+_WHEELBASE = 0.15  # metres (approximate axle width)
+_TURN_RATE = 2.0 * COMPOUND_BASE_SPEED / _WHEELBASE  # rad/s at base speed
+
+# Circle skill motor bases (constant differential → curved path)
+_CIRCLE_LEFT = 0.65
+_CIRCLE_RIGHT = 0.45
+
+# Zigzag arc tuples: (left_motor, right_motor) for alternating gentle arcs
+_ZIGZAG_ARCS = [
+    (0.7, 0.45),  # veer right
+    (0.45, 0.7),  # veer left
+]
 
 # Clamp ranges
 MIN_SPEED = 0.1
@@ -235,7 +259,8 @@ class ConversationManager:
 
         # Extract and clamp speed/duration
         speed_factor = max(MIN_SPEED, min(MAX_SPEED, cmd.get("speed", DEFAULT_SPEED_FACTOR)))
-        duration = max(MIN_DURATION, min(MAX_DURATION, cmd.get("duration", DEFAULT_MOVE_DURATION)))
+        default_dur = SKILL_DURATION_DEFAULTS.get(params, DEFAULT_MOVE_DURATION)
+        duration = max(MIN_DURATION, min(MAX_DURATION, cmd.get("duration", default_dur)))
 
         if params in COMPOUND_MOVES:
             await self._execute_compound(params, speed_factor, duration)
@@ -270,6 +295,14 @@ class ConversationManager:
             await self._execute_wiggle(speed_factor, duration)
         elif params == "dance":
             await self._execute_dance(speed_factor, duration)
+        elif params == "patrol":
+            await self._execute_patrol(speed_factor, duration)
+        elif params == "circle":
+            await self._execute_circle(speed_factor, duration)
+        elif params == "zigzag":
+            await self._execute_zigzag(speed_factor, duration)
+        elif params == "rush":
+            await self._execute_rush(speed_factor, duration)
 
     async def _execute_spin(self, speed_factor: float, duration: float) -> None:
         """Spin in place: left forward, right backward."""
@@ -323,6 +356,67 @@ class ConversationManager:
         await self._execute_spin(speed_factor, quarter)
         await self._execute_wiggle(speed_factor, quarter)
         await self._execute_simple("backward", speed_factor, quarter)
+
+    async def _execute_patrol(self, speed_factor: float, duration: float) -> None:
+        """Patrol: 4 forward legs with 90-degree right turns (rectangular loop)."""
+        # Split duration into 4 legs; each leg = forward + 90° turn
+        # 90° turn time: pi/2 / _TURN_RATE
+        turn_time = (math.pi / 2) / _TURN_RATE
+        leg_time = (duration - 4 * turn_time) / 4
+        if leg_time < 0.05:
+            leg_time = 0.05  # minimum forward per leg
+        spd = COMPOUND_BASE_SPEED * speed_factor
+        turn_spd = max(-1.0, min(1.0, spd))
+
+        logger.info("Executing patrol (speed=%.2f, duration=%.1fs)", speed_factor, duration)
+        for _ in range(4):
+            # Forward leg
+            left = max(-1.0, min(1.0, spd))
+            right = max(-1.0, min(1.0, spd))
+            await self._bus.publish(Events.MOTOR_COMMAND, MotorCommand(left=left, right=right))
+            await asyncio.sleep(leg_time)
+            # 90° right turn (left forward, right backward)
+            await self._bus.publish(
+                Events.MOTOR_COMMAND,
+                MotorCommand(left=turn_spd, right=-turn_spd),
+            )
+            await asyncio.sleep(turn_time)
+        # Stop
+        await self._bus.publish(Events.MOTOR_COMMAND, MotorCommand(left=0, right=0))
+
+    async def _execute_circle(self, speed_factor: float, duration: float) -> None:
+        """Circle: constant differential drive for a curved path."""
+        left = max(-1.0, min(1.0, _CIRCLE_LEFT * speed_factor))
+        right = max(-1.0, min(1.0, _CIRCLE_RIGHT * speed_factor))
+        logger.info("Executing circle (speed=%.2f, duration=%.1fs)", speed_factor, duration)
+        await self._bus.publish(Events.MOTOR_COMMAND, MotorCommand(left=left, right=right))
+        await asyncio.sleep(duration)
+        await self._bus.publish(Events.MOTOR_COMMAND, MotorCommand(left=0, right=0))
+
+    async def _execute_zigzag(self, speed_factor: float, duration: float) -> None:
+        """Zigzag: alternating gentle arcs in 0.4s steps."""
+        step = 0.4
+        elapsed = 0.0
+        arc_idx = 0
+        logger.info("Executing zigzag (speed=%.2f, duration=%.1fs)", speed_factor, duration)
+        while elapsed < duration:
+            t = min(step, duration - elapsed)
+            base_left, base_right = _ZIGZAG_ARCS[arc_idx % len(_ZIGZAG_ARCS)]
+            left = max(-1.0, min(1.0, base_left * speed_factor))
+            right = max(-1.0, min(1.0, base_right * speed_factor))
+            await self._bus.publish(Events.MOTOR_COMMAND, MotorCommand(left=left, right=right))
+            await asyncio.sleep(t)
+            elapsed += t
+            arc_idx += 1
+        await self._bus.publish(Events.MOTOR_COMMAND, MotorCommand(left=0, right=0))
+
+    async def _execute_rush(self, speed_factor: float, duration: float) -> None:
+        """Rush: full-power straight line (bypasses COMPOUND_BASE_SPEED)."""
+        spd = max(-1.0, min(1.0, 1.0 * speed_factor))
+        logger.info("Executing rush (speed=%.2f, duration=%.1fs)", speed_factor, duration)
+        await self._bus.publish(Events.MOTOR_COMMAND, MotorCommand(left=spd, right=spd))
+        await asyncio.sleep(duration)
+        await self._bus.publish(Events.MOTOR_COMMAND, MotorCommand(left=0, right=0))
 
     async def close(self) -> None:
         await self._client.aclose()

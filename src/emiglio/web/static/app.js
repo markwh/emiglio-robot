@@ -152,6 +152,20 @@
       }
     }
 
+    // Goal marker (pulsing orange circle)
+    if (goalMarker) {
+      const pulse = 0.7 + 0.3 * Math.sin(Date.now() / 200);
+      c.beginPath();
+      c.arc(goalMarker.x, goalMarker.y, 30, 0, Math.PI * 2);
+      c.strokeStyle = `rgba(255, 152, 0, ${pulse * 0.6})`;
+      c.lineWidth = 2;
+      c.stroke();
+      c.beginPath();
+      c.arc(goalMarker.x, goalMarker.y, 8, 0, Math.PI * 2);
+      c.fillStyle = `rgba(255, 152, 0, ${pulse})`;
+      c.fill();
+    }
+
     // Robot
     drawRobot(c);
   }
@@ -351,6 +365,13 @@
       updateSubsystems(data);
     } else if (data.type === "event") {
       addEventEntry(data.event, data.detail || "");
+    } else if (data.type === "training_status") {
+      onTrainingStatus(data.running);
+    } else if (data.type === "training_stats") {
+      onTrainingStats(data);
+    } else if (data.type === "training_episode") {
+      onTrainingStats(data);
+      startReplay(data.trajectory, data.goal);
     }
   }
 
@@ -603,6 +624,152 @@
 
   loadCameraDevices();
   loadVoices();
+
+  // ========== RL Training ==========
+
+  const trainingToggleBtn = document.getElementById("training-toggle-btn");
+  const trainingSpeedSel = document.getElementById("training-speed");
+  const tsEpisode = document.getElementById("ts-episode");
+  const tsReward = document.getElementById("ts-reward");
+  const tsGoals = document.getElementById("ts-goals");
+  const tsDist = document.getElementById("ts-dist");
+  const rewardCanvas = document.getElementById("reward-chart");
+  const rewardCtx = rewardCanvas.getContext("2d");
+
+  let trainingRunning = false;
+  let goalCount = 0;
+  let rewardHistory = [];
+  const REWARD_HISTORY_MAX = 100;
+
+  // Goal marker for simulator overlay
+  let goalMarker = null; // {x, y} or null
+
+  // Replay state
+  let replayTimer = null;
+  let replayTrajectory = null;
+  let replayIndex = 0;
+
+  function toggleTraining() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (trainingRunning) {
+      ws.send(JSON.stringify({ type: "training_stop" }));
+    } else {
+      const interval = parseInt(trainingSpeedSel.value, 10);
+      ws.send(JSON.stringify({
+        type: "training_start",
+        total_timesteps: 100000,
+        demo_interval: interval,
+        learning_rate: 0.0003,
+      }));
+    }
+  }
+
+  function onTrainingStatus(running) {
+    trainingRunning = running;
+    if (running) {
+      trainingToggleBtn.textContent = "Stop Training";
+      trainingToggleBtn.classList.add("running");
+      goalCount = 0;
+      rewardHistory = [];
+    } else {
+      trainingToggleBtn.textContent = "Start Training";
+      trainingToggleBtn.classList.remove("running");
+      stopReplay();
+    }
+  }
+
+  function onTrainingStats(data) {
+    tsEpisode.textContent = data.episode;
+    tsReward.textContent = data.reward.toFixed(3);
+    tsDist.textContent = data.dist_to_goal >= 0 ? data.dist_to_goal.toFixed(0) : "-";
+    if (data.goal_reached) {
+      goalCount++;
+      tsGoals.textContent = goalCount;
+    }
+    rewardHistory.push(data.reward);
+    if (rewardHistory.length > REWARD_HISTORY_MAX) {
+      rewardHistory.shift();
+    }
+    drawRewardChart();
+  }
+
+  function startReplay(trajectory, goal) {
+    stopReplay();
+    if (!trajectory || trajectory.length === 0) return;
+    goalMarker = { x: goal[0], y: goal[1] };
+    replayTrajectory = trajectory;
+    replayIndex = 0;
+    robot.trail = [];
+
+    // Pace to ~2s total regardless of trajectory length
+    const interval = Math.max(5, Math.floor(2000 / trajectory.length));
+    replayTimer = setInterval(() => {
+      if (replayIndex >= replayTrajectory.length) {
+        stopReplay();
+        return;
+      }
+      const pt = replayTrajectory[replayIndex];
+      robot.x = pt[0];
+      robot.y = pt[1];
+      robot.trail.push({ x: pt[0], y: pt[1] });
+      replayIndex++;
+    }, interval);
+  }
+
+  function stopReplay() {
+    if (replayTimer) {
+      clearInterval(replayTimer);
+      replayTimer = null;
+    }
+    replayTrajectory = null;
+  }
+
+  function drawRewardChart() {
+    const c = rewardCtx;
+    const W = rewardCanvas.width;
+    const H = rewardCanvas.height;
+    c.clearRect(0, 0, W, H);
+    c.fillStyle = "#16213e";
+    c.fillRect(0, 0, W, H);
+
+    if (rewardHistory.length < 2) return;
+
+    const minR = Math.min(...rewardHistory);
+    const maxR = Math.max(...rewardHistory);
+    const range = maxR - minR || 1;
+    const pad = 4;
+
+    // Zero line
+    if (minR < 0 && maxR > 0) {
+      const zy = H - pad - ((0 - minR) / range) * (H - 2 * pad);
+      c.strokeStyle = "#334";
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(0, zy);
+      c.lineTo(W, zy);
+      c.stroke();
+    }
+
+    // Reward curve
+    c.strokeStyle = "#00d4ff";
+    c.lineWidth = 1.5;
+    c.beginPath();
+    for (let i = 0; i < rewardHistory.length; i++) {
+      const x = (i / (rewardHistory.length - 1)) * W;
+      const y = H - pad - ((rewardHistory[i] - minR) / range) * (H - 2 * pad);
+      if (i === 0) c.moveTo(x, y);
+      else c.lineTo(x, y);
+    }
+    c.stroke();
+  }
+
+  trainingToggleBtn.addEventListener("click", toggleTraining);
+  trainingSpeedSel.addEventListener("change", () => {
+    if (ws && ws.readyState === WebSocket.OPEN && trainingRunning) {
+      const interval = parseInt(trainingSpeedSel.value, 10);
+      ws.send(JSON.stringify({ type: "training_config", demo_interval: interval }));
+    }
+  });
 
   // ========== Skills ==========
 

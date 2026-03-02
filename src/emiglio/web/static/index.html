@@ -89,6 +89,25 @@
                 </div>
             </section>
 
+            <section id="training-section">
+                <span class="section-title">RL Training</span>
+                <div id="training-controls">
+                    <button id="training-toggle-btn">Start Training</button>
+                    <select id="training-speed">
+                        <option value="1" selected>Live</option>
+                        <option value="10">Fast</option>
+                        <option value="100">Turbo</option>
+                    </select>
+                </div>
+                <div id="training-stats">
+                    <div class="train-stat"><span class="train-stat-label">Episode</span><span class="train-stat-val" id="ts-episode">0</span></div>
+                    <div class="train-stat"><span class="train-stat-label">Reward</span><span class="train-stat-val" id="ts-reward">0.000</span></div>
+                    <div class="train-stat"><span class="train-stat-label">Goals</span><span class="train-stat-val" id="ts-goals">0</span></div>
+                    <div class="train-stat"><span class="train-stat-label">Avg Dist</span><span class="train-stat-val" id="ts-dist">-</span></div>
+                </div>
+                <canvas id="reward-chart" width="460" height="80"></canvas>
+            </section>
+
             <section id="camera-section">
                 <div id="camera-toolbar">
                     <select id="camera-select"><option>Loading...</option></select>
