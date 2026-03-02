@@ -103,7 +103,8 @@ class BrainClient:
         if mode == "inline":
             try:
                 from anthropic import AsyncAnthropic
-                self._anthropic = AsyncAnthropic()
+                from emiglio.observability import wrap_anthropic_client
+                self._anthropic = wrap_anthropic_client(AsyncAnthropic())
                 logger.info("Brain: inline mode (model=%s)", model)
             except Exception as e:
                 logger.warning("Brain: failed to create Anthropic client: %s", e)

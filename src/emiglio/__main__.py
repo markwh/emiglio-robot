@@ -20,8 +20,12 @@ import signal
 
 import uvicorn
 
-from emiglio.brain import BrainClient
 from emiglio.config import settings
+from emiglio.observability import configure_tracing
+
+_tracing_active = configure_tracing()
+
+from emiglio.brain import BrainClient
 from emiglio.event_bus import EventBus
 from emiglio.locomotion.controller import LocomotionController
 from emiglio.stt import STTClient
@@ -121,6 +125,7 @@ def main() -> None:
     subsystems.append(f"stt ({settings.stt_mode})" if stt.available else "stt (off)")
     subsystems.append(f"tts ({settings.tts_mode})" if tts.available else "tts (off)")
     subsystems.append(f"brain ({settings.brain_mode})" if brain.available else "brain (off)")
+    subsystems.append(f"tracing ({settings.langsmith_project})" if _tracing_active else "tracing (off)")
     logger.info("Subsystems: %s", ", ".join(subsystems))
     logger.info("Web UI: http://%s:%d", settings.web_host, settings.web_port)
 
