@@ -619,6 +619,16 @@ main {
     cursor: not-allowed;
 }
 
+.skill-btn.nav-skill {
+    background: #1a3a2e;
+    border-color: #1a3a2e;
+    color: #4caf50;
+}
+
+.skill-btn.nav-skill:hover {
+    background: #1e4d3a;
+}
+
 #skill-params {
     display: flex;
     flex-direction: column;
@@ -765,6 +775,144 @@ main {
     height: 80px;
     background: #16213e;
     border-radius: 0.4rem;
+}
+
+/* Domain Randomization */
+#randomization-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+#rand-toggle {
+    font-size: 0.8rem;
+    color: #888;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+#rand-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-left: 1.2rem;
+}
+
+#rand-slider-row input[type="range"] {
+    flex: 1;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: #16213e;
+    border-radius: 3px;
+    outline: none;
+}
+
+#rand-slider-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #ff9800;
+    cursor: pointer;
+}
+
+#rand-slider-row input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #ff9800;
+    cursor: pointer;
+    border: none;
+}
+
+#rand-strength-val {
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: #ff9800;
+    width: 2.5rem;
+    text-align: right;
+}
+
+/* Model Management */
+#model-panel {
+    background: #16213e;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+#model-select-row {
+    display: flex;
+    gap: 0.5rem;
+}
+
+#model-select {
+    flex: 1;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.8rem;
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #0a0a1a;
+    color: #00d4ff;
+    border: 1px solid #0f3460;
+    border-radius: 0.35rem;
+    outline: none;
+    cursor: pointer;
+}
+
+#model-refresh-btn {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.75rem;
+    background: #0f3460;
+    color: #00d4ff;
+    border: 1px solid #0f3460;
+    border-radius: 0.35rem;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+#model-refresh-btn:hover {
+    background: #1a2a4a;
+}
+
+#model-actions {
+    display: flex;
+    gap: 0.4rem;
+}
+
+#model-actions button {
+    flex: 1;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: #0f3460;
+    color: #00d4ff;
+    border: 1px solid #0f3460;
+    border-radius: 0.35rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+#model-actions button:hover:not(:disabled) {
+    background: #1a2a4a;
+}
+
+#model-actions button:disabled {
+    color: #556;
+    cursor: not-allowed;
+}
+
+#model-meta {
+    font-size: 0.75rem;
+    color: #888;
+    line-height: 1.5;
+    font-family: monospace;
 }
 
 /* ---- Voice Lab ---- */

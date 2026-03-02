@@ -14,6 +14,7 @@ from emiglio.conversation import (
     DEFAULT_SPEED_FACTOR,
     DEFAULT_MOVE_DURATION,
     SKILL_DURATION_DEFAULTS,
+    _RL_NAV_SKILLS,
 )
 
 
@@ -376,3 +377,69 @@ async def test_skill_duration_defaults(bus: EventBus):
     # Verify that unlisted skills still default to DEFAULT_MOVE_DURATION
     assert "forward" not in SKILL_DURATION_DEFAULTS
     assert "spin" not in SKILL_DURATION_DEFAULTS
+
+
+# --- RL navigation integration tests ---
+
+
+async def test_rl_nav_used_when_policy_available(bus: EventBus):
+    """When a policy executor is available, patrol should use RL nav."""
+    mock_policy = MagicMock()
+    mock_policy.available = True
+    mock_policy.navigate_waypoints = AsyncMock(return_value=True)
+
+    mgr = ConversationManager(bus=bus, policy_executor=mock_policy)
+    await mgr._execute_command({"action": "move", "params": "patrol", "duration": 1.0})
+
+    mock_policy.navigate_waypoints.assert_awaited_once()
+    args = mock_policy.navigate_waypoints.call_args
+    # Should have passed waypoints list
+    assert len(args[0][0]) == 4  # patrol produces 4 waypoints
+
+
+async def test_rl_nav_fallback_without_policy(bus: EventBus):
+    """Without a policy, patrol should fall back to hardcoded implementation."""
+    mgr = ConversationManager(bus=bus)  # no policy_executor
+    received = []
+
+    async def capture(data):
+        received.append(data)
+
+    bus.subscribe(Events.MOTOR_COMMAND, capture)
+    await mgr._execute_command({"action": "move", "params": "patrol", "duration": 1.0})
+
+    # Should have used hardcoded patrol (4 legs × forward+turn + stop = 9 commands)
+    assert len(received) == 9
+
+
+async def test_rl_nav_fallback_on_error(bus: EventBus):
+    """If RL nav raises, should fall back to hardcoded skill."""
+    mock_policy = MagicMock()
+    mock_policy.available = True
+    mock_policy.navigate_waypoints = AsyncMock(side_effect=RuntimeError("model error"))
+
+    mgr = ConversationManager(bus=bus, policy_executor=mock_policy)
+    received = []
+
+    async def capture(data):
+        received.append(data)
+
+    bus.subscribe(Events.MOTOR_COMMAND, capture)
+    await mgr._execute_command({"action": "move", "params": "patrol", "duration": 1.0})
+
+    # Should have fallen back to hardcoded patrol
+    assert len(received) == 9
+
+
+async def test_expressive_skills_ignore_policy(bus: EventBus):
+    """Spin, wiggle, dance should NOT use RL policy even when available."""
+    mock_policy = MagicMock()
+    mock_policy.available = True
+    mock_policy.navigate_waypoints = AsyncMock()
+
+    mgr = ConversationManager(bus=bus, policy_executor=mock_policy)
+
+    for skill in ("spin", "wiggle", "dance"):
+        mock_policy.navigate_waypoints.reset_mock()
+        await mgr._execute_command({"action": "move", "params": skill, "duration": 0.2})
+        mock_policy.navigate_waypoints.assert_not_awaited()

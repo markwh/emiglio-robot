@@ -89,6 +89,16 @@ def main() -> None:
     # -- Brain --
     brain = BrainClient(mode=settings.brain_mode, model=settings.brain_model)
 
+    # -- RL navigation policy (optional) --
+    policy_executor = None
+    if settings.rl_nav_model:
+        from emiglio.rl.policy_executor import PolicyExecutor
+
+        policy_executor = PolicyExecutor(bus=bus)
+        if not policy_executor.load_model(settings.rl_nav_model):
+            logger.warning("RL nav model '%s' not found — using hardcoded skills", settings.rl_nav_model)
+            policy_executor = None
+
     # -- Conversation --
     conversation = ConversationManager(
         bus=bus,
@@ -98,6 +108,7 @@ def main() -> None:
         brain=brain,
         stt=stt,
         tts=tts,
+        policy_executor=policy_executor,
     )
 
     # -- Web app --
@@ -127,6 +138,7 @@ def main() -> None:
     subsystems.append(f"tts ({settings.tts_mode})" if tts.available else "tts (off)")
     subsystems.append(f"brain ({settings.brain_mode})" if brain.available else "brain (off)")
     subsystems.append(f"tracing ({settings.langsmith_project})" if _tracing_active else "tracing (off)")
+    subsystems.append(f"rl-nav ({settings.rl_nav_model})" if policy_executor else "rl-nav (off)")
     logger.info("Subsystems: %s", ", ".join(subsystems))
     logger.info("Web UI: http://%s:%d", settings.web_host, settings.web_port)
 

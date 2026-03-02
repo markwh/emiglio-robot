@@ -318,6 +318,7 @@
       statusEl.className = "status connected";
       startSending();
       addEventEntry("system", "Connected to server");
+      requestModelList();
     };
     ws.onclose = () => {
       statusEl.textContent = "Disconnected";
@@ -372,6 +373,11 @@
     } else if (data.type === "training_episode") {
       onTrainingStats(data);
       startReplay(data.trajectory, data.goal);
+    } else if (data.type === "model_list") {
+      onModelList(data.models);
+    } else if (data.type === "model_saved") {
+      addEventEntry("training", "Model saved: " + data.name);
+      requestModelList();
     }
   }
 
@@ -389,9 +395,12 @@
     return div.innerHTML;
   }
 
+  let joystickActive = false; // true while user is dragging the joystick
+
   function startSending() {
     if (sendTimer) return;
     sendTimer = setInterval(() => {
+      if (!joystickActive) return; // don't flood (0,0) when idle
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(
           JSON.stringify({
@@ -493,6 +502,7 @@
   let dragging = false;
   canvas.addEventListener("mousedown", (e) => {
     dragging = true;
+    joystickActive = true;
     handleJoystickMove(e.clientX, e.clientY);
   });
   window.addEventListener("mousemove", (e) => {
@@ -501,14 +511,20 @@
   window.addEventListener("mouseup", () => {
     if (dragging) {
       dragging = false;
+      joystickActive = false;
       currentJoy = { x: 0, y: 0 };
       drawJoystick(0, 0);
+      // Send one explicit stop so robot halts
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "joystick", x: 0, y: 0 }));
+      }
     }
   });
 
   // Touch events
   canvas.addEventListener("touchstart", (e) => {
     e.preventDefault();
+    joystickActive = true;
     const t = e.touches[0];
     handleJoystickMove(t.clientX, t.clientY);
   });
@@ -519,8 +535,13 @@
   });
   canvas.addEventListener("touchend", (e) => {
     e.preventDefault();
+    joystickActive = false;
     currentJoy = { x: 0, y: 0 };
     drawJoystick(0, 0);
+    // Send one explicit stop so robot halts
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "joystick", x: 0, y: 0 }));
+    }
   });
 
   // Stop button
@@ -628,6 +649,7 @@
   // ========== RL Training ==========
 
   const trainingToggleBtn = document.getElementById("training-toggle-btn");
+  const trainingEnvTypeSel = document.getElementById("training-env-type");
   const trainingSpeedSel = document.getElementById("training-speed");
   const tsEpisode = document.getElementById("ts-episode");
   const tsReward = document.getElementById("ts-reward");
@@ -635,6 +657,20 @@
   const tsDist = document.getElementById("ts-dist");
   const rewardCanvas = document.getElementById("reward-chart");
   const rewardCtx = rewardCanvas.getContext("2d");
+
+  // Randomization controls
+  const randEnabledChk = document.getElementById("rand-enabled");
+  const randSliderRow = document.getElementById("rand-slider-row");
+  const randStrengthInput = document.getElementById("rand-strength");
+  const randStrengthVal = document.getElementById("rand-strength-val");
+
+  // Model management
+  const modelSelect = document.getElementById("model-select");
+  const modelRefreshBtn = document.getElementById("model-refresh-btn");
+  const modelSaveBtn = document.getElementById("model-save-btn");
+  const modelResumeBtn = document.getElementById("model-resume-btn");
+  const modelInferenceBtn = document.getElementById("model-inference-btn");
+  const modelMeta = document.getElementById("model-meta");
 
   let trainingRunning = false;
   let goalCount = 0;
@@ -649,6 +685,11 @@
   let replayTrajectory = null;
   let replayIndex = 0;
 
+  function getRandomizationStrength() {
+    if (!randEnabledChk.checked) return 0.0;
+    return parseInt(randStrengthInput.value, 10) / 100;
+  }
+
   function toggleTraining() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     if (trainingRunning) {
@@ -660,6 +701,8 @@
         total_timesteps: 100000,
         demo_interval: interval,
         learning_rate: 0.0003,
+        randomization_strength: getRandomizationStrength(),
+        env_type: trainingEnvTypeSel.value,
       }));
     }
   }
@@ -669,12 +712,15 @@
     if (running) {
       trainingToggleBtn.textContent = "Stop Training";
       trainingToggleBtn.classList.add("running");
+      modelSaveBtn.disabled = false;
       goalCount = 0;
       rewardHistory = [];
     } else {
       trainingToggleBtn.textContent = "Start Training";
       trainingToggleBtn.classList.remove("running");
+      modelSaveBtn.disabled = true;
       stopReplay();
+      requestModelList();
     }
   }
 
@@ -823,6 +869,108 @@
 
   skillBtns.forEach((btn) => {
     btn.addEventListener("click", () => sendSkill(btn.dataset.skill));
+  });
+
+  // Randomization controls
+  randEnabledChk.addEventListener("change", () => {
+    if (randEnabledChk.checked) {
+      randSliderRow.classList.remove("hidden");
+    } else {
+      randSliderRow.classList.add("hidden");
+    }
+  });
+  randStrengthInput.addEventListener("input", () => {
+    randStrengthVal.textContent = (parseInt(randStrengthInput.value, 10) / 100).toFixed(2);
+  });
+
+  // Model management
+  function requestModelList() {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "model_list" }));
+    }
+  }
+
+  function onModelList(models) {
+    modelSelect.innerHTML = "";
+    if (!models || models.length === 0) {
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = "No models";
+      opt.disabled = true;
+      modelSelect.appendChild(opt);
+      modelResumeBtn.disabled = true;
+      modelInferenceBtn.disabled = true;
+      modelMeta.classList.add("hidden");
+      return;
+    }
+    models.forEach((m) => {
+      const opt = document.createElement("option");
+      opt.value = m.name;
+      const date = new Date(m.timestamp * 1000);
+      const dateStr = date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      opt.textContent = m.name + " (" + dateStr + ")";
+      modelSelect.appendChild(opt);
+    });
+    modelResumeBtn.disabled = false;
+    modelInferenceBtn.disabled = false;
+    _lastModelList = models;
+    updateModelMeta(models);
+  }
+
+  function updateModelMeta(models) {
+    const name = modelSelect.value;
+    const m = models ? models.find((x) => x.name === name) : null;
+    if (!m) {
+      modelMeta.classList.add("hidden");
+      return;
+    }
+    const date = new Date(m.timestamp * 1000);
+    const envLabel = m.env_type === "nav" ? "Nav" : "Legacy";
+    modelMeta.innerHTML =
+      envLabel + " | Steps: " + m.total_timesteps +
+      " | Episodes: " + m.episodes +
+      " | Reward: " + (m.mean_reward || 0).toFixed(2) +
+      " | Goals: " + ((m.goal_rate || 0) * 100).toFixed(0) + "%" +
+      (m.randomization_strength > 0 ? " | Rand: " + m.randomization_strength.toFixed(2) : "");
+    modelMeta.classList.remove("hidden");
+  }
+
+  let _lastModelList = null;
+  modelSelect.addEventListener("change", () => updateModelMeta(_lastModelList));
+
+  modelRefreshBtn.addEventListener("click", requestModelList);
+
+  modelSaveBtn.addEventListener("click", () => {
+    const name = prompt("Model name:", "model_" + Date.now());
+    if (!name) return;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "model_save", name: name }));
+    }
+  });
+
+  modelResumeBtn.addEventListener("click", () => {
+    const name = modelSelect.value;
+    if (!name || trainingRunning) return;
+    const interval = parseInt(trainingSpeedSel.value, 10);
+    ws.send(JSON.stringify({
+      type: "training_start",
+      total_timesteps: 100000,
+      demo_interval: interval,
+      learning_rate: 0.0003,
+      randomization_strength: getRandomizationStrength(),
+      resume_from: name,
+      env_type: trainingEnvTypeSel.value,
+    }));
+  });
+
+  modelInferenceBtn.addEventListener("click", () => {
+    const name = modelSelect.value;
+    if (!name || trainingRunning) return;
+    ws.send(JSON.stringify({
+      type: "model_inference",
+      name: name,
+      episodes: 5,
+    }));
   });
 
   // Simulator controls

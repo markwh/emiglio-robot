@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import math
+import random
 from typing import Any, Callable
 
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
-from emiglio.rl.sim import SIM_SIZE, Simulator
-from emiglio.rl.skills import NUM_SKILLS, execute_skill
+from emiglio.rl.sim import SIM_SIZE, Simulator, randomized_config
+from emiglio.rl.skills import NUM_SKILLS, SKILL_NAMES, execute_skill
 
 # Default reward function type
 RewardFn = Callable[
@@ -53,6 +54,7 @@ class EmiglioNavEnv(gym.Env):
         min_goal_dist: float = 100.0,
         reward_fn: RewardFn | None = None,
         sim_dt: float = 0.02,
+        randomization_strength: float = 0.0,
     ) -> None:
         super().__init__()
 
@@ -62,6 +64,8 @@ class EmiglioNavEnv(gym.Env):
         self.min_goal_dist = min_goal_dist
         self.reward_fn = reward_fn or default_reward_fn
         self.sim_dt = sim_dt
+        self.randomization_strength = randomization_strength
+        self._domain_rng = random.Random()
 
         self.sim = Simulator()
         self.goal_x = 0.0
@@ -70,6 +74,8 @@ class EmiglioNavEnv(gym.Env):
         self._sim_time = 0.0
         self._episode_reward = 0.0
         self.episode_trajectory: list[tuple[float, float, float]] = []
+        self._skill_counts: list[int] = [0] * NUM_SKILLS  # per-episode skill usage
+        self._wall_hits = 0
 
         self.observation_space = spaces.Box(
             low=0.0, high=1.0, shape=(6,), dtype=np.float32,
@@ -112,11 +118,17 @@ class EmiglioNavEnv(gym.Env):
         self, *, seed: int | None = None, options: dict[str, Any] | None = None,
     ) -> tuple[np.ndarray, dict[str, Any]]:
         super().reset(seed=seed, options=options)
-        self.sim.reset()
+        if self.randomization_strength > 0:
+            cfg = randomized_config(self._domain_rng, self.randomization_strength)
+            self.sim.reset(cfg)
+        else:
+            self.sim.reset()
         self._place_goal(self.np_random)
         self._step_count = 0
         self._sim_time = 0.0
         self._episode_reward = 0.0
+        self._skill_counts = [0] * NUM_SKILLS
+        self._wall_hits = 0
         self.episode_trajectory = [(self.sim.state.x, self.sim.state.y, self.sim.state.heading)]
         return self._get_obs(), {}
 
@@ -124,6 +136,8 @@ class EmiglioNavEnv(gym.Env):
         skill_index = min(int(action[0] * NUM_SKILLS), NUM_SKILLS - 1)
         speed = float(action[1])
         duration = float(action[2])
+
+        self._skill_counts[skill_index] += 1
 
         prev_dist = self._dist_to_goal()
 
@@ -133,6 +147,8 @@ class EmiglioNavEnv(gym.Env):
         self._step_count += 1
 
         curr_dist = self._dist_to_goal()
+        if self.sim.wall_contact:
+            self._wall_hits += 1
         goal_reached = curr_dist <= self.goal_radius
 
         reward = self.reward_fn(prev_dist, curr_dist, self.sim.wall_contact, duration, self)
@@ -150,5 +166,8 @@ class EmiglioNavEnv(gym.Env):
             info["episode_reward"] = self._episode_reward
             info["goal_reached"] = goal_reached
             info["dist_to_goal"] = curr_dist
+            # Diagnostic: per-episode skill distribution and wall hits
+            info["skill_counts"] = list(self._skill_counts)
+            info["wall_hits"] = self._wall_hits
 
         return self._get_obs(), reward, terminated, truncated, info

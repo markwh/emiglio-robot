@@ -285,11 +285,11 @@ def create_app(
                     )
 
                 elif msg_type == "skill":
-                    # Expressive skill: spin, wiggle, dance
+                    # Movement skill (expressive or navigational)
                     skill_name = data.get("name", "")
                     speed = float(data.get("speed", 1.0))
                     duration = float(data.get("duration", 1.0))
-                    valid_skills = {"spin", "wiggle", "dance"}
+                    valid_skills = {"spin", "wiggle", "dance", "patrol", "circle", "zigzag", "rush", "pentagram"}
                     if skill_name not in valid_skills:
                         await ws.send_json({"type": "status", "message": f"Unknown skill: {skill_name}"})
                         continue
@@ -332,9 +332,23 @@ def create_app(
                     total = int(data.get("total_timesteps", 100_000))
                     interval = int(data.get("demo_interval", 1))
                     lr = float(data.get("learning_rate", 3e-4))
-                    await training_mgr.start_training(total, interval, lr)
+                    rand_str = float(data.get("randomization_strength", 0.0))
+                    resume_from = data.get("resume_from") or None
+                    env_type = data.get("env_type", "legacy")
+                    await training_mgr.start_training(
+                        total, interval, lr,
+                        randomization_strength=rand_str,
+                        resume_from=resume_from,
+                        env_type=env_type,
+                    )
                     await _broadcast({"type": "training_status", "running": True})
-                    await _broadcast_event("training", f"Started (timesteps={total}, interval={interval})")
+                    detail = f"Started (timesteps={total}, env={env_type}, interval={interval}"
+                    if rand_str > 0:
+                        detail += f", rand={rand_str:.2f}"
+                    if resume_from:
+                        detail += f", resume={resume_from}"
+                    detail += ")"
+                    await _broadcast_event("training", detail)
                     _training_broadcast_task = asyncio.create_task(_broadcast_training())
 
                 elif msg_type == "training_stop":
@@ -345,6 +359,33 @@ def create_app(
                     interval = int(data.get("demo_interval", 1))
                     training_mgr.set_demo_interval(interval)
                     await _broadcast_event("training", f"Demo interval → {interval}")
+
+                elif msg_type == "model_list":
+                    models = training_mgr.list_models()
+                    await ws.send_json({"type": "model_list", "models": models})
+
+                elif msg_type == "model_save":
+                    name = data.get("name", "").strip()
+                    if not name:
+                        await ws.send_json({"type": "status", "message": "Model name required"})
+                        continue
+                    saved = training_mgr.save_current(name)
+                    if saved:
+                        await _broadcast({"type": "model_saved", "name": saved})
+                        await _broadcast_event("training", f"Model saved: {saved}")
+                    else:
+                        await ws.send_json({"type": "status", "message": "No active model to save"})
+
+                elif msg_type == "model_inference":
+                    model_name = data.get("name", "")
+                    episodes = int(data.get("episodes", 5))
+                    if not model_name:
+                        await ws.send_json({"type": "status", "message": "Model name required"})
+                        continue
+                    await training_mgr.run_inference(model_name, episodes)
+                    await _broadcast({"type": "training_status", "running": True})
+                    await _broadcast_event("training", f"Inference: {model_name} ({episodes} episodes)")
+                    _training_broadcast_task = asyncio.create_task(_broadcast_training())
 
                 else:
                     logger.warning("Unknown WebSocket message type: %s", msg_type)
