@@ -152,7 +152,10 @@ class ConversationManager:
                 await status("Speaking...")
                 audio = await self._synthesize(reply)
                 if audio:
-                    await self._playback.play_wav(audio)
+                    try:
+                        await self._playback.play_wav(audio)
+                    except Exception as e:
+                        logger.warning("Audio playback failed (no output device?): %s", e)
 
             await status("Ready")
             return {"transcript": transcript, "reply": reply, "commands": commands}
@@ -195,7 +198,10 @@ class ConversationManager:
                 await status("Speaking...")
                 audio = await self._synthesize(reply)
                 if audio:
-                    await self._playback.play_wav(audio)
+                    try:
+                        await self._playback.play_wav(audio)
+                    except Exception as e:
+                        logger.warning("Audio playback failed (no output device?): %s", e)
 
             await status("Ready")
             return {"transcript": text, "reply": reply, "commands": commands}
