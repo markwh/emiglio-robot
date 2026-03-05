@@ -3,7 +3,8 @@
 # Run on the Pi: bash scripts/wifi-diagnose.sh
 # Collects all relevant wifi state for troubleshooting.
 
-set -euo pipefail
+set -uo pipefail
+# Note: no set -e — we want to run ALL checks even when some fail
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -25,7 +26,7 @@ if ip link show wlan0 &>/dev/null; then
         pass "wlan0 is UP"
     else
         fail "wlan0 state: $STATE (expected UP)"
-        ((ISSUES++))
+        ISSUES=$((ISSUES + 1))
     fi
 else
     fail "wlan0 not found — no wifi hardware detected"
@@ -41,7 +42,7 @@ if command -v rfkill &>/dev/null; then
         pass "wifi not blocked"
     else
         fail "wifi blocked — soft=$SOFT hard=$HARD"
-        ((ISSUES++))
+        ISSUES=$((ISSUES + 1))
     fi
     # Check if rfkill service is masked (is-enabled returns exit 1 for masked, so capture first)
     RFKILL_ENABLED=$(systemctl is-enabled systemd-rfkill.service 2>/dev/null || true)
@@ -49,7 +50,7 @@ if command -v rfkill &>/dev/null; then
         pass "systemd-rfkill.service is masked (won't re-block on boot)"
     else
         warn "systemd-rfkill.service NOT masked — wifi may get re-blocked on reboot"
-        ((ISSUES++))
+        ISSUES=$((ISSUES + 1))
     fi
     # Check for wpa_supplicant drop-in that unblocks rfkill before wifi starts
     DROPIN="/etc/systemd/system/wpa_supplicant@wlan0.service.d/override.conf"
@@ -57,7 +58,7 @@ if command -v rfkill &>/dev/null; then
         pass "wpa_supplicant rfkill-unblock drop-in installed"
     else
         fail "missing wpa_supplicant rfkill-unblock drop-in — wifi will be blocked at boot"
-        ((ISSUES++))
+        ISSUES=$((ISSUES + 1))
     fi
 else
     warn "rfkill not installed"
@@ -72,7 +73,7 @@ if [[ -f /etc/wpa_supplicant/wpa_supplicant-wlan0.conf ]]; then
         pass "configured SSID: $SSID"
     else
         fail "no SSID configured in wpa_supplicant-wlan0.conf"
-        ((ISSUES++))
+        ISSUES=$((ISSUES + 1))
     fi
 else
     fail "missing /etc/wpa_supplicant/wpa_supplicant-wlan0.conf"
@@ -134,7 +135,7 @@ if [[ -f /etc/resolv.conf ]]; then
         pass "nameserver: $NS"
     else
         fail "/etc/resolv.conf has no nameserver entries"
-        ((ISSUES++))
+        ISSUES=$((ISSUES + 1))
     fi
 else
     fail "/etc/resolv.conf missing"
