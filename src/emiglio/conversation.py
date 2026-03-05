@@ -148,14 +148,23 @@ class ConversationManager:
                 await self._execute_command(cmd)
 
             # 6. Speak the reply via TTS
-            if reply and self._playback:
+            audio_base64 = None
+            if reply:
                 await status("Speaking...")
                 audio = await self._synthesize(reply)
                 if audio:
-                    await self._playback.play_wav(audio)
+                    audio_base64 = base64.b64encode(audio).decode()
+                    if self._playback:
+                        try:
+                            await self._playback.play_wav(audio)
+                        except Exception as e:
+                            logger.warning("Audio playback failed (no output device?): %s", e)
 
             await status("Ready")
-            return {"transcript": transcript, "reply": reply, "commands": commands}
+            result = {"transcript": transcript, "reply": reply, "commands": commands}
+            if audio_base64:
+                result["audio_base64"] = audio_base64
+            return result
 
         except Exception as e:
             logger.error("Conversation error: %s", e, exc_info=True)
@@ -191,14 +200,23 @@ class ConversationManager:
             for cmd in commands:
                 await self._execute_command(cmd)
 
-            if reply and self._playback:
+            audio_base64 = None
+            if reply:
                 await status("Speaking...")
                 audio = await self._synthesize(reply)
                 if audio:
-                    await self._playback.play_wav(audio)
+                    audio_base64 = base64.b64encode(audio).decode()
+                    if self._playback:
+                        try:
+                            await self._playback.play_wav(audio)
+                        except Exception as e:
+                            logger.warning("Audio playback failed (no output device?): %s", e)
 
             await status("Ready")
-            return {"transcript": text, "reply": reply, "commands": commands}
+            result = {"transcript": text, "reply": reply, "commands": commands}
+            if audio_base64:
+                result["audio_base64"] = audio_base64
+            return result
 
         except Exception as e:
             logger.error("Conversation error: %s", e, exc_info=True)

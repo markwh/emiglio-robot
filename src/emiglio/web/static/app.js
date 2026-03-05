@@ -352,6 +352,16 @@
       if (data.reply) {
         addChatMessage("Emiglio", data.reply, "bot");
       }
+      if (data.audio_base64) {
+        const raw = atob(data.audio_base64);
+        const bytes = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+        const blob = new Blob([bytes], { type: "audio/wav" });
+        const url = URL.createObjectURL(blob);
+        vlAudio.src = url;
+        vlAudio.play();
+        vlAudio.onended = () => URL.revokeObjectURL(url);
+      }
       if (data.error && !data.transcript) {
         addChatMessage("System", data.error, "bot");
       }
