@@ -51,6 +51,14 @@ if command -v rfkill &>/dev/null; then
         warn "systemd-rfkill.service NOT masked — wifi may get re-blocked on reboot"
         ((ISSUES++))
     fi
+    # Check for wpa_supplicant drop-in that unblocks rfkill before wifi starts
+    DROPIN="/etc/systemd/system/wpa_supplicant@wlan0.service.d/override.conf"
+    if [[ -f "$DROPIN" ]] && grep -q "rfkill unblock" "$DROPIN" 2>/dev/null; then
+        pass "wpa_supplicant rfkill-unblock drop-in installed"
+    else
+        fail "missing wpa_supplicant rfkill-unblock drop-in — wifi will be blocked at boot"
+        ((ISSUES++))
+    fi
 else
     warn "rfkill not installed"
 fi

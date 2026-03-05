@@ -54,7 +54,19 @@ WPAEOF
 fi
 
 # ── 4. wpa_supplicant service ────────────────────────────────────────
-step "4/6  Enabling wpa_supplicant@wlan0"
+step "4/7  Adding rfkill-unblock drop-in for wpa_supplicant@wlan0"
+# Pi 5 wifi starts soft-blocked at boot. wpa_supplicant must unblock
+# BEFORE it tries to initialize, or it sees the block and gives up.
+DROPIN_DIR="/etc/systemd/system/wpa_supplicant@wlan0.service.d"
+mkdir -p "$DROPIN_DIR"
+cat > "$DROPIN_DIR/override.conf" <<'DROPEOF'
+[Service]
+ExecStartPre=/usr/sbin/rfkill unblock wifi
+DROPEOF
+echo "    Created $DROPIN_DIR/override.conf"
+
+step "5/7  Enabling wpa_supplicant@wlan0"
+systemctl daemon-reload
 systemctl enable wpa_supplicant@wlan0
 systemctl restart wpa_supplicant@wlan0
 # Wait for association
@@ -71,8 +83,8 @@ if ! iw dev wlan0 link 2>/dev/null | grep -q "Connected"; then
 fi
 ok
 
-# ── 5. dhcpcd service ───────────────────────────────────────────────
-step "5/6  Setting up dhcpcd-wlan0 service"
+# ── 6. dhcpcd service ───────────────────────────────────────────────
+step "6/7  Setting up dhcpcd-wlan0 service"
 UNIT="/etc/systemd/system/dhcpcd-wlan0.service"
 cat > "$UNIT" <<'UNITEOF'
 [Unit]
@@ -97,8 +109,8 @@ systemctl enable dhcpcd-wlan0
 systemctl restart dhcpcd-wlan0
 ok
 
-# ── 6. DNS ───────────────────────────────────────────────────────────
-step "6/6  Ensuring persistent DNS"
+# ── 7. DNS ───────────────────────────────────────────────────────────
+step "7/7  Ensuring persistent DNS"
 if [[ ! -f /etc/resolv.conf.head ]] || ! grep -q "nameserver" /etc/resolv.conf.head 2>/dev/null; then
     echo "nameserver 8.8.8.8" > /etc/resolv.conf.head
     echo "    Created /etc/resolv.conf.head with nameserver 8.8.8.8"

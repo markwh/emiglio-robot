@@ -14,12 +14,24 @@ Notably, `iw dev wlan0 scan` worked fine throughout — the hardware and driver 
 
 ## Solution: Bypass NetworkManager, use wpa_supplicant + dhcpcd
 
-### 1. Mask rfkill so wifi stays unblocked
+### 1. Unblock rfkill at boot
+
+Pi 5 wifi starts soft-blocked on every boot. Masking systemd-rfkill alone isn't enough — we need to unblock **before** wpa_supplicant starts, via a systemd drop-in:
 
 ```bash
 sudo rfkill unblock wifi
 sudo systemctl mask systemd-rfkill.service systemd-rfkill.socket
+
+# Critical: unblock wifi before wpa_supplicant initializes
+sudo mkdir -p /etc/systemd/system/wpa_supplicant@wlan0.service.d
+sudo tee /etc/systemd/system/wpa_supplicant@wlan0.service.d/override.conf <<'EOF'
+[Service]
+ExecStartPre=/usr/sbin/rfkill unblock wifi
+EOF
+sudo systemctl daemon-reload
 ```
+
+Without the drop-in, wpa_supplicant sees the soft-block and gives up before dhcpcd's `rfkill unblock` runs.
 
 ### 2. Configure wpa_supplicant
 
