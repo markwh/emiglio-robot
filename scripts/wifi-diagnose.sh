@@ -119,7 +119,28 @@ else
     ((ISSUES++))
 fi
 
-header "5. IP address"
+header "5. Late-boot wifi recovery"
+WIFIUP_ENABLED=$(systemctl is-enabled wifi-up 2>/dev/null || true)
+WIFIUP_ACTIVE=$(systemctl is-active wifi-up 2>/dev/null || true)
+if [[ "$WIFIUP_ENABLED" == "enabled" ]]; then
+    pass "wifi-up.service enabled"
+else
+    fail "wifi-up.service not enabled — late-boot recovery won't run"
+    ISSUES=$((ISSUES + 1))
+fi
+if [[ -f /etc/systemd/system/wifi-up.service ]]; then
+    pass "wifi-up.service unit file exists"
+else
+    fail "missing /etc/systemd/system/wifi-up.service"
+    ISSUES=$((ISSUES + 1))
+fi
+# Show if it ran and what it did
+WIFIUP_LOG=$(journalctl -u wifi-up -b --no-pager 2>/dev/null | tail -3 || true)
+if [[ -n "$WIFIUP_LOG" ]]; then
+    echo "  Last log: $WIFIUP_LOG"
+fi
+
+header "6. IP address"
 IP=$(ip -4 addr show wlan0 2>/dev/null | grep -oP 'inet \K[\d.]+' || echo "")
 if [[ -n "$IP" ]]; then
     pass "wlan0 IP: $IP"
@@ -128,7 +149,7 @@ else
     ((ISSUES++))
 fi
 
-header "6. DNS"
+header "7. DNS"
 if [[ -f /etc/resolv.conf ]]; then
     NS=$(grep "^nameserver" /etc/resolv.conf | head -1 | awk '{print $2}')
     if [[ -n "$NS" ]]; then
@@ -155,7 +176,7 @@ else
     ((ISSUES++))
 fi
 
-header "7. Connectivity"
+header "8. Connectivity"
 if ping -c1 -W3 8.8.8.8 &>/dev/null; then
     pass "internet reachable (8.8.8.8)"
 else
@@ -169,7 +190,7 @@ else
     ((ISSUES++))
 fi
 
-header "8. Ethernet (conflict check)"
+header "9. Ethernet (conflict check)"
 ETH_IP=$(ip -4 addr show eth0 2>/dev/null | grep -oP 'inet \K[\d.]+' || echo "")
 if [[ -n "$ETH_IP" ]]; then
     warn "ethernet is ALSO connected (eth0: $ETH_IP) — may mask wifi issues"

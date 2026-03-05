@@ -19,18 +19,18 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # ── 1. Unblock wifi and mask rfkill ──────────────────────────────────
-step "1/6  Unblocking wifi + masking systemd-rfkill"
+step "1/7  Unblocking wifi + masking systemd-rfkill"
 rfkill unblock wifi
 systemctl mask systemd-rfkill.service systemd-rfkill.socket 2>/dev/null || true
 ok
 
 # ── 2. Bring interface up ────────────────────────────────────────────
-step "2/6  Bringing wlan0 up"
+step "2/7  Bringing wlan0 up"
 ip link set wlan0 up
 ok
 
 # ── 3. wpa_supplicant config ─────────────────────────────────────────
-step "3/6  Checking wpa_supplicant config"
+step "3/7  Checking wpa_supplicant config"
 WPA_CONF="/etc/wpa_supplicant/wpa_supplicant-wlan0.conf"
 if [[ -f "$WPA_CONF" ]]; then
     echo "    $WPA_CONF exists"
@@ -54,18 +54,7 @@ WPAEOF
 fi
 
 # ── 4. wpa_supplicant service ────────────────────────────────────────
-step "4/7  Adding rfkill-unblock drop-in for wpa_supplicant@wlan0"
-# Pi 5 wifi starts soft-blocked at boot. wpa_supplicant must unblock
-# BEFORE it tries to initialize, or it sees the block and gives up.
-DROPIN_DIR="/etc/systemd/system/wpa_supplicant@wlan0.service.d"
-mkdir -p "$DROPIN_DIR"
-cat > "$DROPIN_DIR/override.conf" <<'DROPEOF'
-[Service]
-ExecStartPre=/usr/sbin/rfkill unblock wifi
-DROPEOF
-echo "    Created $DROPIN_DIR/override.conf"
-
-step "5/7  Enabling wpa_supplicant@wlan0"
+step "4/7  Enabling wpa_supplicant@wlan0"
 systemctl daemon-reload
 systemctl enable wpa_supplicant@wlan0
 systemctl restart wpa_supplicant@wlan0
@@ -83,8 +72,8 @@ if ! iw dev wlan0 link 2>/dev/null | grep -q "Connected"; then
 fi
 ok
 
-# ── 6. dhcpcd service ───────────────────────────────────────────────
-step "6/7  Setting up dhcpcd-wlan0 service"
+# ── 5. dhcpcd service ───────────────────────────────────────────────
+step "5/7  Setting up dhcpcd-wlan0 service"
 UNIT="/etc/systemd/system/dhcpcd-wlan0.service"
 cat > "$UNIT" <<'UNITEOF'
 [Unit]
@@ -107,6 +96,44 @@ UNITEOF
 systemctl daemon-reload
 systemctl enable dhcpcd-wlan0
 systemctl restart dhcpcd-wlan0
+ok
+
+# ── 6. Late-boot wifi recovery service ──────────────────────────────
+step "6/7  Installing wifi-up late-boot recovery service"
+# The Pi 5 brcmfmac driver re-applies the rfkill soft-block AFTER
+# wpa_supplicant and dhcpcd have already started and unblocked.
+# This service waits for boot to settle, then unblocks + restarts
+# the wifi stack if needed.
+cat > /etc/systemd/system/wifi-up.service <<'WIFIEOF'
+[Unit]
+Description=Late-boot WiFi recovery (Pi 5 rfkill workaround)
+After=multi-user.target dhcpcd-wlan0.service
+Wants=dhcpcd-wlan0.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash -c '\
+  sleep 10; \
+  if rfkill list wifi | grep -q "Soft blocked: yes"; then \
+    echo "wifi-up: rfkill was still blocked, unblocking..."; \
+    rfkill unblock wifi; \
+    ip link set wlan0 up; \
+    sleep 2; \
+    systemctl restart wpa_supplicant@wlan0; \
+    sleep 5; \
+    systemctl restart dhcpcd-wlan0; \
+    echo "wifi-up: wifi stack restarted"; \
+  else \
+    echo "wifi-up: wifi already unblocked, nothing to do"; \
+  fi'
+
+[Install]
+WantedBy=multi-user.target
+WIFIEOF
+systemctl daemon-reload
+systemctl enable wifi-up
+echo "    Installed wifi-up.service (runs 10s after boot, re-unblocks if needed)"
 ok
 
 # ── 7. DNS ───────────────────────────────────────────────────────────
