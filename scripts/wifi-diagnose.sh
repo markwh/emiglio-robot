@@ -43,8 +43,9 @@ if command -v rfkill &>/dev/null; then
         fail "wifi blocked — soft=$SOFT hard=$HARD"
         ((ISSUES++))
     fi
-    # Check if rfkill service is masked
-    if systemctl is-enabled systemd-rfkill.service 2>/dev/null | grep -q masked; then
+    # Check if rfkill service is masked (is-enabled returns exit 1 for masked, so capture first)
+    RFKILL_ENABLED=$(systemctl is-enabled systemd-rfkill.service 2>/dev/null || true)
+    if [[ "$RFKILL_ENABLED" == "masked" ]]; then
         pass "systemd-rfkill.service is masked (won't re-block on boot)"
     else
         warn "systemd-rfkill.service NOT masked — wifi may get re-blocked on reboot"
