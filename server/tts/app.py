@@ -39,6 +39,8 @@ app = FastAPI(title="Emiglio TTS", lifespan=lifespan)
 
 class SynthesizeRequest(BaseModel):
     text: str
+    voice_id: str | None = None
+    model_id: str | None = None
 
 
 @app.post("/synthesize")
@@ -47,12 +49,15 @@ async def synthesize(req: SynthesizeRequest):
     if client is None:
         return Response(content="ElevenLabs API key not configured", status_code=503)
 
+    effective_voice = req.voice_id or voice_id
+    effective_model = req.model_id or model_id
+
     # Get PCM audio from ElevenLabs (16-bit mono 22050Hz)
     raw_chunks = []
     async for chunk in client.text_to_speech.convert(
         text=req.text,
-        voice_id=voice_id,
-        model_id=model_id,
+        voice_id=effective_voice,
+        model_id=effective_model,
         output_format="pcm_22050",
     ):
         raw_chunks.append(chunk)

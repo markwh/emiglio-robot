@@ -161,7 +161,11 @@ class TTSClient:
                 model_id=model_id or self._model_id,
             )
         else:
-            wav = await self._synthesize_server(text, server_url)
+            wav = await self._synthesize_server(
+                text, server_url,
+                voice_id=voice_id or self._voice_id,
+                model_id=model_id or self._model_id,
+            )
 
         if wav is not None and self._robot_effect:
             wav = robotize_wav(wav)
@@ -200,15 +204,24 @@ class TTSClient:
             logger.error("TTS inline synthesis failed: %s", e)
             return None
 
-    async def _synthesize_server(self, text: str, server_url: str) -> bytes | None:
+    async def _synthesize_server(
+        self, text: str, server_url: str, voice_id: str | None = None, model_id: str | None = None
+    ) -> bytes | None:
         """POST to the TTS HTTP server."""
         if self._http is None:
             return None
 
         try:
+            payload: dict = {"text": text}
+            vid = voice_id or self._voice_id
+            mid = model_id or self._model_id
+            if vid:
+                payload["voice_id"] = vid
+            if mid:
+                payload["model_id"] = mid
             resp = await self._http.post(
                 f"{server_url}/synthesize",
-                json={"text": text},
+                json=payload,
             )
             resp.raise_for_status()
             return resp.content
