@@ -1,10 +1,11 @@
 """Application configuration via environment variables."""
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    model_config = {"env_prefix": "EMIGLIO_"}
+    model_config = {"env_prefix": "EMIGLIO_", "env_file": ".env", "extra": "ignore"}
 
     # Hardware mode: "real" for GPIO, "mock" for laptop development
     hardware_mode: str = "mock"
@@ -25,7 +26,10 @@ class Settings(BaseSettings):
     stt_mode: str = "inline"
     stt_model: str = "small"
     stt_language: str = "en"
-    server_stt_url: str = "http://localhost:8001"
+    server_stt_url: str = Field(
+        default="http://localhost:8001",
+        validation_alias=AliasChoices("SERVER_STT_URL", "EMIGLIO_SERVER_STT_URL"),
+    )
 
     # TTS (always inline — direct ElevenLabs API)
     tts_voice_id: str = "21m00Tcm4TlvDq8ikWAM"  # Rachel
@@ -34,6 +38,18 @@ class Settings(BaseSettings):
 
     # Brain (always inline — LangGraph agent calling Claude API directly)
     brain_model: str = "claude-sonnet-4-5-20250929"
+    anthropic_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("ANTHROPIC_API_KEY", "EMIGLIO_ANTHROPIC_API_KEY"),
+    )
+
+    # ElevenLabs API key (used by TTS SDK)
+    elevenlabs_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "ELEVENLABS_API_KEY", "ELEVEN_API_KEY", "EMIGLIO_ELEVENLABS_API_KEY"
+        ),
+    )
 
     # RL navigation
     rl_nav_model: str = ""  # model name for RL-driven navigation skills
@@ -46,7 +62,10 @@ class Settings(BaseSettings):
     # Observability / tracing
     tracing_enabled: bool = False
     tracing_backend: str = "langsmith"
-    langsmith_api_key: str = ""
+    langsmith_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("LANGSMITH_API_KEY", "EMIGLIO_LANGSMITH_API_KEY"),
+    )
     langsmith_project: str = "emiglio"
 
 

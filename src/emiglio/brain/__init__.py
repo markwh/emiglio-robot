@@ -45,17 +45,20 @@ def extract_commands(messages: list) -> list[dict]:
 class BrainClient:
     """Calls Claude via a LangGraph ReAct agent with structured tool calls."""
 
-    def __init__(self, model: str = "claude-sonnet-4-5-20250929") -> None:
+    def __init__(self, model: str = "claude-sonnet-4-5-20250929", api_key: str = "") -> None:
         self._model = model
         self._agent = None
 
         try:
             from langchain_anthropic import ChatAnthropic
-            from langchain.agents import create_react_agent
+            from langgraph.prebuilt import create_react_agent
 
             from emiglio.brain.prompts import SYSTEM_PROMPT
 
-            llm = ChatAnthropic(model=model, max_tokens=256)
+            kwargs = {"model": model, "max_tokens": 256}
+            if api_key:
+                kwargs["anthropic_api_key"] = api_key
+            llm = ChatAnthropic(**kwargs)
             self._agent = create_react_agent(llm, ALL_TOOLS, prompt=SYSTEM_PROMPT)
             logger.info("Brain: LangGraph agent initialized (model=%s)", model)
         except Exception as e:

@@ -88,7 +88,7 @@ class TestTracingConfig:
         """Tracing fields have correct defaults."""
         from emiglio.config import Settings
 
-        s = Settings()
+        s = Settings(_env_file=None)
         assert s.tracing_enabled is False
         assert s.tracing_backend == "langsmith"
         assert s.langsmith_api_key == ""
@@ -103,7 +103,7 @@ class TestTracingConfig:
         }
         with patch.dict(os.environ, env):
             from emiglio.config import Settings
-            s = Settings()
+            s = Settings(_env_file=None)
             assert s.tracing_enabled is True
             assert s.langsmith_api_key == "lsv2_test"
             assert s.langsmith_project == "my-project"

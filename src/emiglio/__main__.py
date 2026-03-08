@@ -3,6 +3,12 @@
 import os
 import sys
 
+# Load .env into os.environ early — third-party SDKs (ChatAnthropic, ElevenLabs)
+# read API keys directly from the environment, not from pydantic Settings.
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # Guard: if the venv Python was created while conda was active, its RPATH
 # pulls in conda's outdated libstdc++, breaking system libs like libjack.
 # Detect this and warn early, before native imports fail silently.
@@ -86,7 +92,7 @@ def main() -> None:
     )
 
     # -- Brain --
-    brain = BrainClient(model=settings.brain_model)
+    brain = BrainClient(model=settings.brain_model, api_key=settings.anthropic_api_key)
 
     # -- RL navigation policy (optional) --
     policy_executor = None
