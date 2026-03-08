@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Base Platform Build Guide - Emiglio Robot</title>
+<style>
+  :root { --bg: #1a1a2e; --fg: #e0e0e0; --accent: #e94560; --code-bg: #16213e;
+           --border: #0f3460; --link: #53a8b6; --table-alt: #16213e; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+          background: var(--bg); color: var(--fg); line-height: 1.7;
+          max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; }
+  h1 { color: var(--accent); font-size: 2rem; margin: 0 0 0.5rem;
+        border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; }
+  h2 { color: #e0e0e0; font-size: 1.5rem; margin: 2.5rem 0 1rem;
+        border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
+  h3 { color: var(--link); font-size: 1.15rem; margin: 1.8rem 0 0.6rem; }
+  p { margin: 0.6rem 0; }
+  a { color: var(--link); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  strong { color: #fff; }
+  code { background: var(--code-bg); color: #7ec8e3; padding: 0.15em 0.4em;
+          border-radius: 4px; font-size: 0.9em;
+          font-family: 'Fira Code', 'Cascadia Code', monospace; }
+  pre { background: var(--code-bg); border: 1px solid var(--border);
+         border-radius: 8px; padding: 1rem; overflow-x: auto; margin: 1rem 0; }
+  pre code { background: none; padding: 0; color: #a8d8ea; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0;
+           font-size: 0.95rem; }
+  th { background: var(--border); color: #fff; text-align: left;
+        padding: 0.6rem 0.8rem; border: 1px solid #1a3a5c; }
+  td { padding: 0.5rem 0.8rem; border: 1px solid #1a3a5c; }
+  tr:nth-child(even) { background: var(--table-alt); }
+  blockquote { border-left: 4px solid var(--accent); background: var(--code-bg);
+                padding: 0.8rem 1rem; margin: 1rem 0;
+                border-radius: 0 8px 8px 0; }
+  blockquote p { margin: 0.3rem 0; }
+  ul, ol { padding-left: 1.5rem; margin: 0.5rem 0; }
+  li { margin: 0.3rem 0; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  @media (max-width: 600px) {
+    body { padding: 1rem; }
+    h1 { font-size: 1.5rem; }
+    pre { font-size: 0.85rem; }
+  }
+</style>
+</head>
+<body>
+<h1>Base Platform Build Guide</h1>
+<p><strong>Goal:</strong> Turn the existing Emiglio base into a working, laptop-controllable moving platform.</p>
+<p><strong>End state:</strong> You open <code>http://&lt;pi-ip&gt;:8080</code> on your laptop, drag the joystick, and the robot drives around the floor.</p>
+<h2>What You're Working With</h2>
+<p>The base already has:</p>
+<ul>
+<li><strong>Two DC motors</strong> with gearboxes driving the main wheels (differential drive)</li>
+<li><strong>Two D-cell battery cases</strong> (4 D batteries total) — original motor power</li>
+<li><strong>A 12V DC input port</strong> — original wall adapter input</li>
+<li><strong>Stabilizer wheels</strong> (casters) front and rear</li>
+<li><strong>Red/black motor wires</strong> (clipped during disassembly — stubs remain on motor terminals)</li>
+</ul>
+<p>The software already has:</p>
+<ul>
+<li><strong>Web UI with joystick</strong> at <code>http://&lt;host&gt;:8080</code> — 2D touch/mouse control</li>
+<li><strong>WebSocket motor control</strong> — joystick sends x/y at 100ms, server maps to left/right motor speeds</li>
+<li><strong>Virtual robot simulator</strong> — visual feedback with wheel colors, speed gauges, trail</li>
+<li><strong>Stop button</strong> — emergency halt</li>
+<li><strong>Event bus wiring</strong> — joystick → WebSocket → EventBus → LocomotionController → MotorDriver → GPIO</li>
+<li><strong>Mock mode</strong> — <code>EMIGLIO_HARDWARE_MODE=mock</code> logs motor commands (for dev without hardware)</li>
+<li><strong>Motor test script</strong> — <code>scripts/motor_test.py</code> runs a predefined sequence</li>
+</ul>
+<p><strong>What you need to add:</strong> A TB6612FNG motor driver board between the Pi's GPIO and the motors.</p>
+<h2>Parts Needed</h2>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Have it?</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Raspberry Pi 5 (4GB)</td>
+<td>On order</td>
+<td>The brains — runs emiglio service</td>
+</tr>
+<tr>
+<td>TB6612FNG breakout board</td>
+<td>To buy</td>
+<td>Dual H-bridge motor driver, ~$5-10</td>
+</tr>
+<tr>
+<td>4x D batteries</td>
+<td>To buy/have</td>
+<td>For the existing battery cases</td>
+</tr>
+<tr>
+<td>Jumper wires (M-F and M-M)</td>
+<td>Elegoo kit</td>
+<td>GPIO header to TB6612FNG</td>
+</tr>
+<tr>
+<td>USB-C power supply (5V 3A+)</td>
+<td>To buy/have</td>
+<td>Powers the Pi</td>
+</tr>
+<tr>
+<td>Soldering iron + solder</td>
+<td>Have</td>
+<td>For motor wire prep</td>
+</tr>
+<tr>
+<td>Multimeter</td>
+<td>Have</td>
+<td>For voltage/continuity checks</td>
+</tr>
+<tr>
+<td>Small screwdriver</td>
+<td>Have</td>
+<td>To open the base</td>
+</tr>
+</tbody>
+</table>
+<h2>Step-by-Step Build</h2>
+<hr />
+<h3>Step 1: Open the base and survey the internals</h3>
+<p><strong>Time:</strong> 10 minutes</p>
+<ol>
+<li>Flip the base upside down</li>
+<li>Remove the bottom panel screws (Phillips)</li>
+<li>Photograph the interior before touching anything — you'll want this for reference</li>
+<li>Identify and label:
+<ul>
+<li>Left motor and right motor (when looking from the rear of the robot)</li>
+<li>Motor wire stubs (red/black on each motor)</li>
+<li>Battery case wiring</li>
+<li>The 12V DC input port and where its wires go</li>
+<li>Any original circuit board remnants</li>
+</ul>
+</li>
+</ol>
+<p><strong>Record these measurements:</strong></p>
+<ul>
+<li>Motor wire stub lengths (mm remaining)</li>
+<li>Battery case wiring: are the two cases wired in series (6V) or parallel (3V)?</li>
+<li>Available space for the TB6612FNG board</li>
+</ul>
+<blockquote>
+<p><strong>Tip:</strong> The two D-cell cases could be wired various ways. Trace the wires:</p>
+<ul>
+<li>2 cases in series = 6V (more likely for driving motors)</li>
+<li>2 cases in parallel = 3V with double capacity</li>
+<li>Each case may itself be 2 cells in series = 3V per case
+Check with a multimeter: load 4 D cells, measure voltage at the output leads.</li>
+</ul>
+</blockquote>
+<hr />
+<h3>Step 2: Characterize the motors</h3>
+<p><strong>Time:</strong> 15 minutes</p>
+<p>You need to know the motor voltage and current draw before wiring the TB6612FNG.</p>
+<ol>
+<li><strong>Load the battery cases with 4 D cells</strong></li>
+<li><strong>Measure the battery output voltage</strong> with a multimeter — should be ~6V (4x 1.5V in series) or ~3V</li>
+<li><strong>Touch the battery leads directly to one motor</strong> (briefly, 1-2 seconds):
+<ul>
+<li>Does it spin? Which direction?</li>
+<li>Does it spin the wheel?</li>
+<li>Does it sound healthy (smooth hum, not grinding)?</li>
+</ul>
+</li>
+<li><strong>Repeat for the other motor</strong></li>
+<li><strong>If you have a bench supply or the original 12V adapter</strong>, try that too — note how the motors respond at different voltages. This tells you their comfortable operating range.</li>
+<li><strong>Measure stall current</strong> (optional but useful): hold the wheel still while powered and read amps. The TB6612FNG handles 1.2A continuous / 3.2A peak per channel.</li>
+</ol>
+<p><strong>Record:</strong></p>
+<ul>
+<li>Battery voltage: ____V</li>
+<li>Left motor: spins? direction? sounds ok?</li>
+<li>Right motor: spins? direction? sounds ok?</li>
+<li>Stall current (if measured): ____A</li>
+</ul>
+<blockquote>
+<p><strong>If stall current exceeds 1.2A:</strong> You'll want an L298N driver instead of TB6612FNG, or cap PWM duty cycle in software to limit current. The TB6612FNG has thermal shutdown protection, so it won't burn out — it'll just cut off.</p>
+</blockquote>
+<hr />
+<h3>Step 3: Assess the 12V DC port</h3>
+<p><strong>Time:</strong> 5 minutes</p>
+<p>Trace where the 12V port wires go:</p>
+<ul>
+<li>If they connect to the battery cases in parallel (as an alternative power source), you can reuse this port to power the motors from a bench supply during development</li>
+<li>If they went to the original circuit board (now removed), you can repurpose the port freely</li>
+</ul>
+<p><strong>Decision point:</strong> For v1.0, you can either:</p>
+<ul>
+<li><strong>Use the D-cell batteries</strong> (simple, portable, already there)</li>
+<li><strong>Use a 12V wall adapter through the existing port</strong> (unlimited runtime for bench testing)</li>
+<li><strong>Both</strong> — wire the 12V port and battery cases to the TB6612FNG VM pin through a simple selector (or just swap cables)</li>
+</ul>
+<blockquote>
+<p><strong>Recommendation:</strong> Start with D cells for simplicity. Once you've confirmed everything works, add the 12V adapter option for extended testing sessions.</p>
+</blockquote>
+<hr />
+<h3>Step 4: Prepare the motor wires</h3>
+<p><strong>Time:</strong> 15 minutes</p>
+<p>Each motor needs two wires reaching the TB6612FNG.</p>
+<ol>
+<li><strong>Inspect the wire stubs</strong> on each motor's terminals</li>
+<li><strong>If stubs are long enough</strong> (≥30 mm): strip the ends, tin with solder</li>
+<li><strong>If stubs are too short</strong>: solder new ~150 mm lengths of 22 AWG stranded wire to each motor terminal</li>
+<li><strong>Use different colors or label</strong> left vs. right motor wires (tape flags or heat shrink)</li>
+<li><strong>Note polarity</strong>: for each motor, mark which terminal gives &quot;forward&quot; motion (away from the front of the robot) when the + battery lead is applied. This maps to AO1/BO1 on the TB6612FNG.</li>
+</ol>
+<hr />
+<h3>Step 5: Wire the TB6612FNG</h3>
+<p><strong>Time:</strong> 20 minutes</p>
+<p>The TB6612FNG is a small breakout board. Here's what connects where:</p>
+<pre><code>                    TB6612FNG BREAKOUT
+               ┌─────────────────────────┐
+               │                         │
+    Motor L +──┤ AO1              AO2 ├──Motor L -
+               │                         │
+    Motor R +──┤ BO1              BO2 ├──Motor R -
+               │                         │
+  Battery + ──┤ VM          VCC ├── Pi 3.3V
+               │                         │
+  Battery - ──┤ GND         GND ├── Pi GND
+               │                         │
+   Pi GPIO 17──┤ AIN1       STBY ├── jumper to VCC
+   Pi GPIO 27──┤ AIN2             │
+   Pi GPIO 12──┤ PWMA             │
+               │                         │
+   Pi GPIO 22──┤ BIN1             │
+   Pi GPIO 23──┤ BIN2             │
+   Pi GPIO 13──┤ PWMB             │
+               └─────────────────────────┘
+</code></pre>
+<p><strong>Wiring steps:</strong></p>
+<ol>
+<li>
+<p><strong>Motor outputs:</strong></p>
+<ul>
+<li>Left motor + → AO1, Left motor - → AO2</li>
+<li>Right motor + → BO1, Right motor - → BO2</li>
+</ul>
+</li>
+<li>
+<p><strong>Motor power:</strong></p>
+<ul>
+<li>Battery case + → VM</li>
+<li>Battery case - → GND (one of the GND pins)</li>
+</ul>
+</li>
+<li>
+<p><strong>Logic power:</strong></p>
+<ul>
+<li>Pi 3.3V → VCC</li>
+<li>Pi GND → GND (second GND pin — <strong>common ground with battery is essential</strong>)</li>
+</ul>
+</li>
+<li>
+<p><strong>Standby:</strong></p>
+<ul>
+<li>STBY → jumper wire to VCC (ties it HIGH to enable the driver)</li>
+</ul>
+</li>
+<li>
+<p><strong>Control signals (use jumper wires to Pi GPIO header):</strong></p>
+<ul>
+<li>AIN1 ← Pi GPIO 17 (BCM) = physical pin 11</li>
+<li>AIN2 ← Pi GPIO 27 (BCM) = physical pin 13</li>
+<li>PWMA ← Pi GPIO 12 (BCM) = physical pin 32</li>
+<li>BIN1 ← Pi GPIO 22 (BCM) = physical pin 15</li>
+<li>BIN2 ← Pi GPIO 23 (BCM) = physical pin 16</li>
+<li>PWMB ← Pi GPIO 13 (BCM) = physical pin 33</li>
+</ul>
+</li>
+</ol>
+<blockquote>
+<p><strong>Tip:</strong> Use female-to-female jumper wires if the TB6612FNG has header pins. Use male-to-female from the TB6612FNG to the Pi's GPIO header.</p>
+</blockquote>
+<hr />
+<h3>Step 6: Mount the TB6612FNG in the base</h3>
+<p><strong>Time:</strong> 5 minutes</p>
+<p>For now, keep it simple:</p>
+<ul>
+<li>Stick the TB6612FNG to an interior wall of the base using double-sided foam tape</li>
+<li>Position it near the motors to keep motor wires short</li>
+<li>Route the signal wires (6 GPIO + VCC + GND) out through the base top toward where the body will sit</li>
+</ul>
+<p>Don't overthink mounting at this stage — you'll refine placement after confirming everything works.</p>
+<hr />
+<h3>Step 7: Set up the Pi</h3>
+<p><strong>Time:</strong> 20 minutes (once Pi arrives)</p>
+<ol>
+<li>
+<p><strong>Flash Raspberry Pi OS</strong> (64-bit Lite or Desktop) onto a microSD card</p>
+</li>
+<li>
+<p><strong>Enable SSH and WiFi</strong> during flashing (use Raspberry Pi Imager's settings)</p>
+</li>
+<li>
+<p><strong>Boot the Pi</strong>, SSH in from your laptop</p>
+</li>
+<li>
+<p><strong>Run the setup script:</strong></p>
+<pre><code class="language-bash">git clone &lt;your-repo-url&gt; ~/emiglio-robot
+cd ~/emiglio-robot
+bash deploy/setup-pi.sh
+</code></pre>
+<p>This installs Python, uv, dependencies, and tests in mock mode.</p>
+</li>
+<li>
+<p><strong>Connect GPIO wires</strong> from the TB6612FNG to the Pi header per Step 5</p>
+</li>
+<li>
+<p><strong>Connect Pi power</strong> via USB-C (route cable out through the base or body)</p>
+</li>
+</ol>
+<hr />
+<h3>Step 8: Smoke test with motor_test.py</h3>
+<p><strong>Time:</strong> 5 minutes</p>
+<p>This runs a scripted sequence (forward, backward, turn left, turn right, etc.) to verify all wiring.</p>
+<pre><code class="language-bash"># SSH into Pi, then:
+cd ~/emiglio-robot
+EMIGLIO_HARDWARE_MODE=real uv run python scripts/motor_test.py
+</code></pre>
+<p><strong>Watch for:</strong></p>
+<ul>
+<li>Both motors should spin during each test</li>
+<li>&quot;Forward&quot; should drive both wheels the same direction</li>
+<li>&quot;Turn left&quot; should spin wheels in opposite directions</li>
+<li>No grinding, no burning smell, no TB6612FNG getting hot</li>
+</ul>
+<p><strong>If a motor spins the wrong way:</strong> Swap its AO1/AO2 (or BO1/BO2) wires at the TB6612FNG.</p>
+<p><strong>If nothing happens:</strong></p>
+<ul>
+<li>Check STBY is tied to VCC</li>
+<li>Check battery voltage at VM pin with multimeter</li>
+<li>Check Pi GND is connected to TB6612FNG GND (common ground)</li>
+<li>Check GPIO pin numbers are correct (BCM, not physical)</li>
+</ul>
+<hr />
+<h3>Step 9: Launch the full emiglio service</h3>
+<p><strong>Time:</strong> 2 minutes</p>
+<pre><code class="language-bash"># On Pi:
+EMIGLIO_HARDWARE_MODE=real uv run python -m emiglio
+</code></pre>
+<p>You should see log output:</p>
+<pre><code>INFO: MotorDriver initialized with real GPIO pins
+INFO: Uvicorn running on http://0.0.0.0:8080
+</code></pre>
+<hr />
+<h3>Step 10: Drive from your laptop</h3>
+<p><strong>Time:</strong> Immediately</p>
+<ol>
+<li><strong>Open a browser on your laptop:</strong> <code>http://&lt;pi-ip&gt;:8080</code>
+<ul>
+<li>Find Pi's IP with <code>hostname -I</code> on the Pi</li>
+</ul>
+</li>
+<li><strong>You'll see the Emiglio web UI</strong> with a joystick pad and virtual robot simulator</li>
+<li><strong>Drag the joystick</strong> — the robot should move
+<ul>
+<li>Up = forward (both motors)</li>
+<li>Down = backward</li>
+<li>Left/right = differential turning</li>
+</ul>
+</li>
+<li><strong>Hit the Stop button</strong> if anything goes wrong</li>
+<li><strong>Watch the simulator</strong> — it shows real-time motor states with colored wheels and speed gauges</li>
+</ol>
+<p><strong>That's it — you have a laptop-controlled moving platform.</strong></p>
+<hr />
+<h2>Troubleshooting</h2>
+<table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>Check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Web UI loads but joystick does nothing</td>
+<td>Check browser console for WebSocket errors; verify Pi firewall allows port 8080</td>
+</tr>
+<tr>
+<td>Motors jitter but don't drive</td>
+<td>Battery voltage too low; try fresh D cells or the 12V adapter</td>
+</tr>
+<tr>
+<td>Robot drives but pulls to one side</td>
+<td>One motor is weaker; adjust in software or check wiring</td>
+</tr>
+<tr>
+<td>TB6612FNG gets very hot</td>
+<td>Motor stall current too high; limit PWM duty in config or add current limiting</td>
+</tr>
+<tr>
+<td>Pi disconnects from WiFi when motors start</td>
+<td>Motor noise on power rail; ensure separate power supplies, add a capacitor across VM-GND</td>
+</tr>
+<tr>
+<td>&quot;Mock motors&quot; in logs even though you set REAL</td>
+<td>Check env var: <code>echo $EMIGLIO_HARDWARE_MODE</code> — must be exactly <code>real</code></td>
+</tr>
+</tbody>
+</table>
+<h2>Future Improvements</h2>
+<p>Once the basic platform is working:</p>
+<ul>
+<li><strong>Add the 12V adapter</strong> through the existing port for unlimited bench testing</li>
+<li><strong>Migrate to systemd service</strong> — <code>sudo systemctl start emiglio</code> for auto-start on boot (see <code>deploy/emiglio.service</code>)</li>
+<li><strong>Tune speed curves</strong> — the joystick-to-motor mapping is linear; you may want exponential curves for fine control</li>
+<li><strong>Add the body and head</strong> — mount electronics in the barrel, stack the head on top</li>
+<li><strong>Battery monitoring</strong> — add a voltage divider on an ADC pin to monitor D-cell charge level</li>
+</ul>
+<h2>Quick Reference</h2>
+<pre><code>Pi GPIO ─────────────────── TB6612FNG ──── Motor
+BCM 17 (pin 11) ────────── AIN1
+BCM 27 (pin 13) ────────── AIN2
+BCM 12 (pin 32) ────────── PWMA ────────── Left motor
+BCM 22 (pin 15) ────────── BIN1
+BCM 23 (pin 16) ────────── BIN2
+BCM 13 (pin 33) ────────── PWMB ────────── Right motor
+3.3V   (pin 1)  ────────── VCC + STBY
+GND    (pin 6)  ────────── GND ──┐
+                                  ├── common ground
+Battery -  ─────────────── GND ──┘
+Battery +  ─────────────── VM
+</code></pre>
+<p><strong>Start the service:</strong></p>
+<pre><code class="language-bash">EMIGLIO_HARDWARE_MODE=real uv run python -m emiglio
+</code></pre>
+<p><strong>Open in browser:</strong></p>
+<pre><code>http://&lt;pi-ip&gt;:8080
+</code></pre>
+
+</body>
+</html>
