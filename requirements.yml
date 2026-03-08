@@ -1,0 +1,513 @@
+# Emiglio requirements manifest
+# Tracks milestones, requirements, and the v2.0+ idea parking lot.
+# Managed by: emiglio-pm req <command>
+
+milestones:
+  v1.0:
+    description: Working robot — moves, sees, hears, speaks, converses (wall-powered, flat floors, joystick-driven)
+    deadline: null
+    acceptance:
+      - Plug in wall adapter, SSH into Pi
+      - Run emiglio (or systemd auto-starts it), open web UI on phone
+      - Drive robot around the room with joystick
+      - Voice conversation (push-to-talk → STT → Brain → TTS → speaker)
+      - Ask "what do you see?" and get camera-aware response
+      - Emiglio personality present (retro-optimist, warm, 1-3 sentences)
+
+  v2.0:
+    description: Untethered + expanded capabilities (battery, projector, autonomy)
+    deadline: null
+    acceptance: []
+
+requirements:
+
+  # ── Assembly (HW-*) ────────────────────────────────────────────
+
+  HW-01:
+    title: Pi 5 mounted in body (canister sled)
+    milestone: v1.0
+    workstream: assembly
+    status: not_started
+    blocked_by: []
+    tags: [hardware, critical-path, body]
+    notes: All parts received. Needs oatmeal canister or similar cylinder sourced.
+
+  HW-02:
+    title: TB6612FNG wired to Pi GPIO and motors
+    milestone: v1.0
+    workstream: assembly
+    status: not_started
+    blocked_by: []
+    tags: [hardware, critical-path, base]
+    notes: GPIO pins BCM 17/27/12 (left) and 22/23/13 (right)
+
+  HW-03:
+    title: PAM8403 wired to Pi audio out and head speaker
+    milestone: v1.0
+    workstream: assembly
+    status: not_started
+    blocked_by: [EL-02]
+    tags: [hardware, critical-path, body]
+    notes: 3.5mm aux cable from Pi to PAM8403, speaker via JST neck connector
+
+  HW-04:
+    title: USB webcam mounted in head
+    milestone: v1.0
+    workstream: assembly
+    status: not_started
+    blocked_by: []
+    tags: [hardware, critical-path, head]
+    notes: Route USB cable through neck to Pi
+
+  HW-05:
+    title: USB microphone mounted in head
+    milestone: v1.0
+    workstream: assembly
+    status: not_started
+    blocked_by: []
+    tags: [hardware, critical-path, head]
+    notes: Route USB cable through neck to Pi
+
+  HW-06:
+    title: LED eye wired to GPIO
+    milestone: v1.0
+    workstream: assembly
+    status: not_started
+    blocked_by: [EL-01]
+    tags: [hardware, head]
+    notes: BCM pin TBD — waiting on electronics pin assignment
+
+  HW-07:
+    title: JST-XH neck connector (speaker + LED)
+    milestone: v1.0
+    workstream: assembly
+    status: not_started
+    blocked_by: []
+    tags: [hardware, head, body]
+    notes: 4-pin JST-XH — speaker+, speaker-, LED signal, LED ground
+
+  HW-08:
+    title: Screw terminal base-to-body connector
+    milestone: v1.0
+    workstream: assembly
+    status: not_started
+    blocked_by: []
+    tags: [hardware, base, body]
+    notes: 8-position — 6 motor signals + VCC + GND
+
+  HW-09:
+    title: USB-C power cable routed into body
+    milestone: v1.0
+    workstream: assembly
+    status: not_started
+    blocked_by: []
+    tags: [hardware, body]
+    notes: Rubber grommet at barrel wall hole
+
+  HW-10:
+    title: Head, body, base fully assembled and closeable
+    milestone: v1.0
+    workstream: assembly
+    status: not_started
+    blocked_by: [HW-01, HW-02, HW-03, HW-04, HW-05, HW-06, HW-07, HW-08, HW-09]
+    tags: [hardware, critical-path, integration]
+    notes: Final assembly — everything connected, cables dressed, head secured
+
+  # ── Electronics (EL-*) ─────────────────────────────────────────
+
+  EL-01:
+    title: LED GPIO pin assignment finalized
+    milestone: v1.0
+    workstream: electronics
+    status: not_started
+    blocked_by: []
+    tags: [electronics, decision]
+    notes: Pick from available BCM pins (4-6, 16, 18-21, 24-27)
+
+  EL-02:
+    title: PAM8403 power source confirmed (Pi 5V vs separate)
+    milestone: v1.0
+    workstream: electronics
+    status: not_started
+    blocked_by: []
+    tags: [electronics, decision]
+    notes: Pi 5V pin can supply ~200mA — should be sufficient
+
+  EL-03:
+    title: Audio output method confirmed (3.5mm for v1.0)
+    milestone: v1.0
+    workstream: electronics
+    status: done
+    blocked_by: []
+    tags: [electronics, decision]
+    notes: 3.5mm jack — simplest, no config. I2S DAC deferred to v2.0.
+
+  EL-04:
+    title: Full integrated circuit schematic
+    milestone: v1.0
+    workstream: electronics
+    status: not_started
+    blocked_by: [EL-01, EL-02]
+    tags: [electronics]
+    notes: Combine head, body, base wiring into one reference schematic
+
+  # ── Software — Pi-side (SW-*) ──────────────────────────────────
+
+  SW-01:
+    title: "Locomotion: differential drive via TB6612FNG + gpiozero"
+    milestone: v1.0
+    workstream: software
+    status: done
+    blocked_by: []
+    tags: [software, locomotion]
+
+  SW-02:
+    title: Joystick mixing (web joystick → motor PWM)
+    milestone: v1.0
+    workstream: software
+    status: done
+    blocked_by: []
+    tags: [software, locomotion, web-ui]
+
+  SW-03:
+    title: "Camera: OpenCV capture + MJPEG streaming"
+    milestone: v1.0
+    workstream: software
+    status: done
+    blocked_by: []
+    tags: [software, vision]
+
+  SW-04:
+    title: "Audio capture: mic → WAV buffer"
+    milestone: v1.0
+    workstream: software
+    status: done
+    blocked_by: []
+    tags: [software, audio]
+
+  SW-05:
+    title: "Audio playback: WAV/MP3 → speaker"
+    milestone: v1.0
+    workstream: software
+    status: done
+    blocked_by: []
+    tags: [software, audio]
+
+  SW-06:
+    title: "Web UI: joystick, camera feed, push-to-talk, text chat"
+    milestone: v1.0
+    workstream: software
+    status: done
+    blocked_by: []
+    tags: [software, web-ui]
+
+  SW-07:
+    title: "Conversation loop: mic → STT → Brain → TTS → speaker"
+    milestone: v1.0
+    workstream: software
+    status: done
+    blocked_by: []
+    tags: [software, conversation]
+
+  SW-08:
+    title: Camera frame sent to brain on "what do you see?"
+    milestone: v1.0
+    workstream: software
+    status: done
+    blocked_by: []
+    tags: [software, vision, conversation]
+
+  SW-09:
+    title: Brain movement commands executed by locomotion
+    milestone: v1.0
+    workstream: software
+    status: done
+    blocked_by: []
+    tags: [software, locomotion, conversation]
+
+  SW-10:
+    title: "EventBus wiring: all subsystems connected"
+    milestone: v1.0
+    workstream: software
+    status: done
+    blocked_by: []
+    tags: [software, architecture]
+
+  SW-11:
+    title: Config via env vars (EMIGLIO_* prefix, pydantic-settings)
+    milestone: v1.0
+    workstream: software
+    status: done
+    blocked_by: []
+    tags: [software, config]
+
+  SW-12:
+    title: Mock mode works on laptop (no Pi hardware required)
+    milestone: v1.0
+    workstream: software
+    status: done
+    blocked_by: []
+    tags: [software, dev-experience]
+
+  SW-13:
+    title: Pi 5 OS setup + emiglio stack installable via SSH
+    milestone: v1.0
+    workstream: software
+    status: not_started
+    blocked_by: []
+    tags: [software, critical-path, deployment]
+    notes: Flash Raspberry Pi OS, configure SSH, install uv + emiglio
+
+  SW-14:
+    title: systemd service for auto-start on boot
+    milestone: v1.0
+    workstream: software
+    status: not_started
+    blocked_by: [SW-13]
+    tags: [software, deployment]
+    notes: deploy/emiglio.service — auto-start emiglio on Pi boot
+
+  SW-15:
+    title: ALSA/PulseAudio config for Pi 5 audio out
+    milestone: v1.0
+    workstream: software
+    status: not_started
+    blocked_by: [SW-13]
+    tags: [software, audio, deployment]
+    notes: Ensure 3.5mm audio output works on Pi OS
+
+  SW-16:
+    title: Camera + mic device enumeration on Pi
+    milestone: v1.0
+    workstream: software
+    status: not_started
+    blocked_by: [SW-13]
+    tags: [software, deployment]
+    notes: Verify which USB port maps to which device
+
+  # ── Software — Server-side (SV-*) ─────────────────────────────
+
+  SV-01:
+    title: STT service (Whisper) — Docker or inline
+    milestone: v1.0
+    workstream: software
+    status: done
+    blocked_by: []
+    tags: [software, server, stt]
+
+  SV-02:
+    title: TTS service (ElevenLabs) — Docker or inline
+    milestone: v1.0
+    workstream: software
+    status: done
+    blocked_by: []
+    tags: [software, server, tts]
+
+  SV-03:
+    title: Brain service (Claude via LangChain/LangGraph)
+    milestone: v1.0
+    workstream: software
+    status: done
+    blocked_by: []
+    tags: [software, server, brain]
+
+  SV-04:
+    title: Brain tool-calling for movement commands
+    milestone: v1.0
+    workstream: software
+    status: done
+    blocked_by: []
+    tags: [software, server, brain]
+
+  SV-05:
+    title: "Brain vision: accepts camera frame, describes scene"
+    milestone: v1.0
+    workstream: software
+    status: done
+    blocked_by: []
+    tags: [software, server, brain, vision]
+
+  SV-06:
+    title: All services runnable inline (no Docker required)
+    milestone: v1.0
+    workstream: software
+    status: done
+    blocked_by: []
+    tags: [software, server, dev-experience]
+
+  # ── AI / Personality (AI-*) ────────────────────────────────────
+
+  AI-01:
+    title: "System prompt: retro-optimist personality"
+    milestone: v1.0
+    workstream: ai-skills
+    status: done
+    blocked_by: []
+    tags: [ai, personality]
+
+  AI-02:
+    title: Tool-calling prompt (v3) — movement via LangChain tools
+    milestone: v1.0
+    workstream: ai-skills
+    status: done
+    blocked_by: []
+    tags: [ai, personality, tools]
+
+  AI-03:
+    title: 1-3 sentence response style, no emoji/markdown
+    milestone: v1.0
+    workstream: ai-skills
+    status: done
+    blocked_by: []
+    tags: [ai, personality]
+
+  AI-04:
+    title: Capability boundaries (no internet, no arms, honest)
+    milestone: v1.0
+    workstream: ai-skills
+    status: done
+    blocked_by: []
+    tags: [ai, personality]
+
+  AI-05:
+    title: End-to-end voice personality test on real hardware
+    milestone: v1.0
+    workstream: ai-skills
+    status: not_started
+    blocked_by: [SW-13, HW-10]
+    tags: [ai, critical-path, integration]
+    notes: Final validation — does Emiglio sound right on the real speaker?
+
+parking_lot:
+
+  - title: Battery power (LiPo or USB power bank in body)
+    category: hardware
+    complexity: medium
+    milestone: v2.0
+    notes: Eliminates wall tether, enables roaming
+
+  - title: Projector display (visor flips up, projects on walls)
+    category: hardware
+    complexity: medium
+    milestone: v2.0
+    notes: $40 projector already purchased, fits in head dome
+
+  - title: Head swivel servo (pan camera/speaker direction)
+    category: hardware
+    complexity: hard
+    milestone: v2.0
+    notes: Mechanical design needed for neck joint
+
+  - title: Modular arm sockets (vacuum, gripper, etc.)
+    category: hardware
+    complexity: hard
+    milestone: v2.0
+    notes: One arm missing — design both from scratch
+
+  - title: Autonomous navigation (SLAM or simple wander)
+    category: software+AI
+    complexity: hard
+    milestone: v2.0
+    notes: Needs obstacle detection strategy
+
+  - title: Wake word detection ("Hey Emiglio")
+    category: software
+    complexity: medium
+    milestone: v2.0
+    notes: Always-listening mode, VAD tuning
+
+  - title: Conversation memory (session + long-term)
+    category: AI
+    complexity: medium
+    milestone: v2.0
+    notes: LangGraph checkpointing or vector store
+
+  - title: Emotion detection from voice tone
+    category: AI
+    complexity: medium
+    milestone: v2.0
+    notes: Sentiment analysis on audio features
+
+  - title: Vision prompt templates (scene descriptions)
+    category: AI
+    complexity: easy
+    milestone: v2.0
+    notes: Structured prompts for different visual contexts
+
+  - title: Scheduled behaviors (patrol, greet, announce)
+    category: software+AI
+    complexity: medium
+    milestone: v2.0
+    notes: Cron-like task runner + personality routines
+
+  - title: Multi-room awareness (room identification)
+    category: AI+hardware
+    complexity: hard
+    milestone: v2.0
+    notes: Needs landmarks or indoor positioning
+
+  - title: I2S DAC audio upgrade
+    category: electronics
+    complexity: easy
+    milestone: v2.0
+    notes: Better audio quality, replaces 3.5mm PWM output
+
+  - title: LED eye animations (blink, pulse, express emotion)
+    category: software+electronics
+    complexity: easy
+    milestone: v2.0
+    notes: PWM control, personality integration
+
+  - title: NeoPixel accent lighting
+    category: electronics
+    complexity: easy
+    milestone: v2.0
+    notes: Mood lighting, status indicators
+
+  - title: OLED status display (on body)
+    category: electronics+software
+    complexity: easy
+    milestone: v2.0
+    notes: Show status, IP address, mood
+
+  - title: Web UI v2 (settings, personality tuning, logs)
+    category: software
+    complexity: medium
+    milestone: v2.0
+    notes: Admin panel beyond basic controls
+
+  - title: OTA updates (deploy new code without SSH)
+    category: software
+    complexity: medium
+    milestone: v2.0
+    notes: Git pull + restart via web UI or API
+
+  - title: Sound effects library (beeps, boops, reactions)
+    category: AI+software
+    complexity: easy
+    milestone: v2.0
+    notes: Retro robot sounds for personality
+
+  - title: Object recognition (identify specific items)
+    category: AI
+    complexity: medium
+    milestone: v2.0
+    notes: Fine-tuned vision or prompt engineering
+
+  - title: Person recognition (identify household members)
+    category: AI
+    complexity: hard
+    milestone: v2.0
+    notes: Face embeddings, privacy considerations
+
+  - title: Voice cloning (custom Emiglio voice)
+    category: AI
+    complexity: medium
+    milestone: v2.0
+    notes: ElevenLabs voice design or local model
+
+  - title: Home Assistant integration
+    category: software
+    complexity: medium
+    milestone: v2.0
+    notes: Control smart home devices via conversation
