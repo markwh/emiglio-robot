@@ -30,6 +30,7 @@ uv run emiglio-pm status          # show worktree status
 
 ```
 workstreams.yml        # Workstream manifest (branches, scopes, metadata)
+requirements.yml       # Milestones, requirements, v2.0+ parking lot
 src/emiglio/           # Pi-side package (installed as 'emiglio')
   event_bus.py         # Async pub/sub event system
   config.py            # Pydantic settings
@@ -38,11 +39,13 @@ src/emiglio/           # Pi-side package (installed as 'emiglio')
   vision/              # Camera + MJPEG streaming
   audio/               # Mic capture + speaker playback
   web/                 # FastAPI server + static UI
-src/emiglio_pm/        # PM tooling CLI (dev-only)
-  cli.py               # argparse + command dispatch
-  manifest.py          # Load/validate workstreams.yml
-  git_ops.py           # Git worktree/merge/rebase helpers
-  worktree_md.py       # Jinja2 WORKTREE.md generation
+lib/worktree-pm/       # Git submodule — emiglio-pm CLI package
+  src/emiglio_pm/      # PM tooling source
+    cli.py             # argparse + command dispatch
+    manifest.py        # Load/validate workstreams.yml
+    requirements.py    # Load/validate requirements.yml
+    git_ops.py         # Git worktree/merge/rebase helpers
+    worktree_md.py     # Jinja2 WORKTREE.md generation
 server/                # Home server Docker services
 scripts/               # Hardware test scripts
 tests/                 # pytest tests
@@ -51,6 +54,7 @@ docs/                  # Project documentation
   assembly/            # Physical build guides and plans
   ai-skills/           # AI/ML research and experiment notes
   workstreams/         # Agent instruction files (source for WORKTREE.md)
+  v1-requirements.md   # Human-readable v1.0 checklist
 notebooks/             # Jupyter notebooks for AI experiments
 ```
 
@@ -74,18 +78,32 @@ All worktrees live under `.claude/worktrees/{name}/`. Each contains a generated 
 ### PM CLI (`emiglio-pm`)
 
 ```bash
-uv run emiglio-pm status          # show all worktrees: exists, dirty, WORKTREE.md, latest commit
-uv run emiglio-pm create <name>   # git worktree add + generate WORKTREE.md
-uv run emiglio-pm sync <name>     # regenerate WORKTREE.md in one worktree
-uv run emiglio-pm sync-all        # regenerate WORKTREE.md in all worktrees
-uv run emiglio-pm merge <name>    # merge workstream branch into develop
-uv run emiglio-pm rebase-all      # rebase all worktree branches onto develop
+# Project status
+uv run emiglio-pm sitrep              # divergence, activity, action items, req progress
+uv run emiglio-pm status              # worktree existence and health
+
+# Requirements tracking
+uv run emiglio-pm req status          # v1.0 progress dashboard
+uv run emiglio-pm req list [--workstream X] [--status Y] [--tag Z]
+uv run emiglio-pm req update <ID> --status <STATUS> [--notes "..."]
+uv run emiglio-pm req add "title" --prefix XX --workstream name
+uv run emiglio-pm req park "idea" --category cat --complexity easy|medium|hard
+uv run emiglio-pm req check           # validate requirements.yml
+
+# Workstream management
+uv run emiglio-pm create <name>       # git worktree add + generate WORKTREE.md
+uv run emiglio-pm spawn <name> --role "..." --summary "..."
+uv run emiglio-pm sync <name>         # regenerate WORKTREE.md
+uv run emiglio-pm sync-all            # regenerate all WORKTREE.md files
+uv run emiglio-pm merge <name>        # merge workstream branch into develop
+uv run emiglio-pm rebase-all          # rebase all worktree branches onto develop
 ```
 
 ### Coordination
 
-- The **PM agent** on `develop` manages worktrees via `emiglio-pm` and merges completed work.
+- The **PM agent** on `develop` manages worktrees via `emiglio-pm` and merges completed work. See `docs/workstreams/pm.md` for full PM instructions.
 - **Workstream agents** commit to their own branches and flag readiness.
 - Merges into `develop` are handled by the PM agent.
 - Merges from `develop` into `main` happen during periodic reviews with Mark.
 - If a `WORKTREE.md` exists in your repo root, follow its instructions for your workstream scope.
+- Requirements are tracked in `requirements.yml` — use `emiglio-pm req` commands to manage.
