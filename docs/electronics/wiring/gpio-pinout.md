@@ -23,15 +23,15 @@ All pin numbers use BCM (Broadcom) numbering. The Pi 5 has the same 40-pin heade
 | 5V | 2 or 4 | PAM8403 VCC | 22 AWG |
 | GND | 6, 9, 14, 20, 25, 30, 34, 39 | Common ground bus | 22 AWG |
 
-### LED Eye (TBD)
+### LED Eye
 
-| Signal | BCM GPIO | Physical Pin | Notes |
-|--------|----------|-------------|-------|
-| LED anode | TBD | TBD | Via 220-330 ohm resistor, 3.3V logic |
+| Signal | BCM GPIO | Physical Pin | Direction | Wire Gauge | Notes |
+|--------|----------|-------------|-----------|------------|-------|
+| LED anode | 24 | 18 | Output | 26 AWG | Via 220 ohm resistor, 3.3V logic |
 
 ### Unallocated / Available
 
-GPIO 4, 5, 6, 16, 19, 20, 21, 24, 25, 26 are free for future use (sensors, servos, NeoPixels, etc.)
+GPIO 4, 5, 6, 16, 19, 20, 21, 25, 26 are free for future use (sensors, servos, NeoPixels, etc.)
 
 ## 40-Pin Header Visual
 
@@ -54,8 +54,8 @@ GPIO 4, 5, 6, 16, 19, 20, 21, 24, 25, 26 are free for future use (sensors, servo
   [AIN2] GPIO27     │ ←    ↕        │
                     │ (15) ●  ○  (16) │ GPIO23   [BIN2] →
   [BIN1] GPIO22     │ ←              │ ←
-                    │ (17) ●  ○  (18) │ GPIO24
-              3.3V  │                  │
+                    │ (17) ●  ●  (18) │ GPIO24   [LED] →
+              3.3V  │         ↕        │
                     │ (19) ○  ○  (20) │ GND
               MOSI  │         ↕        │
                     │ (21) ○  ○  (22) │ GPIO25
@@ -89,3 +89,4 @@ GPIO 4, 5, 6, 16, 19, 20, 21, 24, 25, 26 are free for future use (sensors, servo
 - STBY (standby) is tied to VCC (always enabled); could be moved to a GPIO for software sleep mode (v2.0)
 - Pi 5 uses the RP1 I/O controller — gpiozero works the same as Pi 4B
 - All motor GPIOs are directly routed to the base via the 9-wire body-to-base connector
+- LED GPIO 24 is routed to the head via the JST-XH 4-pin neck connector (pins 3-4: LED signal + GND)
