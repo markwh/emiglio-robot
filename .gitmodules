@@ -1,0 +1,3 @@
+[submodule "lib/worktree-pm"]
+	path = lib/worktree-pm
+	url = git@github.com:markwh/worktree-pm.git
