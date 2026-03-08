@@ -80,14 +80,13 @@ def main() -> None:
 
     # -- TTS --
     tts = TTSClient(
-        mode=settings.tts_mode,
         voice_id=settings.tts_voice_id,
         model_id=settings.tts_model_id,
         robot_effect=settings.tts_robot_effect,
     )
 
     # -- Brain --
-    brain = BrainClient(mode=settings.brain_mode, model=settings.brain_model)
+    brain = BrainClient(model=settings.brain_model)
 
     # -- RL navigation policy (optional) --
     policy_executor = None
@@ -135,8 +134,8 @@ def main() -> None:
     subsystems.append("camera" if camera._cap is not None else "camera (off)")
     subsystems.append("audio" if audio_capture else "audio (off)")
     subsystems.append(f"stt ({settings.stt_mode})" if stt.available else "stt (off)")
-    subsystems.append(f"tts ({settings.tts_mode})" if tts.available else "tts (off)")
-    subsystems.append(f"brain ({settings.brain_mode})" if brain.available else "brain (off)")
+    subsystems.append("tts" if tts.available else "tts (off)")
+    subsystems.append("brain" if brain.available else "brain (off)")
     subsystems.append(f"tracing ({settings.langsmith_project})" if _tracing_active else "tracing (off)")
     subsystems.append(f"rl-nav ({settings.rl_nav_model})" if policy_executor else "rl-nav (off)")
     logger.info("Subsystems: %s", ", ".join(subsystems))

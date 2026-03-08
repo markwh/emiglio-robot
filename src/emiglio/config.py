@@ -25,21 +25,15 @@ class Settings(BaseSettings):
     stt_mode: str = "inline"
     stt_model: str = "small"
     stt_language: str = "en"
+    server_stt_url: str = "http://localhost:8001"
 
-    # TTS mode: "inline" (direct ElevenLabs API) or "server" (HTTP to Docker service)
-    tts_mode: str = "inline"
+    # TTS (always inline — direct ElevenLabs API)
     tts_voice_id: str = "21m00Tcm4TlvDq8ikWAM"  # Rachel
     tts_model_id: str = "eleven_flash_v2_5"
     tts_robot_effect: bool = True  # lo-fi downsample + bit crush
 
-    # Brain mode: "inline" (direct API call) or "server" (HTTP to Docker service)
-    brain_mode: str = "inline"
+    # Brain (always inline — LangGraph agent calling Claude API directly)
     brain_model: str = "claude-sonnet-4-5-20250929"
-
-    # Server (home server) URLs
-    server_stt_url: str = "http://localhost:8001"
-    server_tts_url: str = "http://localhost:8002"
-    server_brain_url: str = "http://localhost:8003"
 
     # RL navigation
     rl_nav_model: str = ""  # model name for RL-driven navigation skills

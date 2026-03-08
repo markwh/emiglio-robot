@@ -127,10 +127,7 @@ def create_app(
         if conversation._playback is None:
             return {"ok": False, "error": "Audio playback not available"}
         try:
-            from emiglio.config import settings
-            audio = await conversation._tts.synthesize(
-                "Hello, I am Emiglio.", server_url=settings.server_tts_url
-            )
+            audio = await conversation._tts.synthesize("Hello, I am Emiglio.")
             if audio is None:
                 return {"ok": False, "error": "TTS returned no audio"}
             await conversation._playback.play_wav(audio)

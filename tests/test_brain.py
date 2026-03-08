@@ -1,21 +1,15 @@
-"""Tests for the brain service LangGraph integration and Pi-side BrainClient.
+"""Tests for the brain LangGraph agent integration.
 
 Tests the tool-to-command mapping, message extraction logic, and
-inline brain client without making any API calls.
+BrainClient without making any API calls.
 """
 
-import sys
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-# Add the brain service directory to the path so we can import its modules
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "server" / "brain"))
-
-from tools import ALL_TOOLS, TOOL_TO_COMMAND
-from graph import extract_commands, extract_reply
-from emiglio.brain import BrainClient, parse_commands
+from emiglio.brain import BrainClient, extract_commands, extract_reply
+from emiglio.brain.tools import ALL_TOOLS, TOOL_TO_COMMAND
 
 
 # --- TOOL_TO_COMMAND mapping tests ---
@@ -157,112 +151,23 @@ def test_extract_commands_skips_human_messages():
     assert commands[0]["params"] == "backward"
 
 
-# --- Pi-side BrainClient tests ---
+# --- BrainClient tests ---
 
 
-def test_parse_commands_none():
-    text = "Just a regular response with no commands."
-    clean, commands = parse_commands(text)
-    assert len(commands) == 0
-    assert clean == text
-
-
-def test_brain_client_inline_mode():
-    """BrainClient in inline mode creates an Anthropic client (or warns if no key)."""
-    brain = BrainClient(mode="inline", model="claude-sonnet-4-5-20250929")
-    assert brain._mode == "inline"
-    # Client may or may not be available depending on ANTHROPIC_API_KEY
+def test_brain_client_available():
+    """BrainClient.available reflects whether the agent was created."""
+    brain = BrainClient(model="claude-sonnet-4-5-20250929")
+    # May or may not be available depending on ANTHROPIC_API_KEY
     assert isinstance(brain.available, bool)
 
 
-def test_brain_client_server_mode():
-    """BrainClient in server mode creates an HTTP client."""
-    brain = BrainClient(mode="server")
-    assert brain._mode == "server"
-    assert brain.available is True
-    assert brain._http is not None
-
-
-def test_brain_client_invalid_mode():
-    """BrainClient raises ValueError for unknown mode."""
-    with pytest.raises(ValueError, match="Unknown brain_mode"):
-        BrainClient(mode="banana")
-
-
-# --- parse_commands with speed/duration/compound tests ---
-
-
-def test_parse_commands_with_speed():
-    """speed= modifier should be extracted as a float."""
-    text = "Let me come closer. [COMMAND:move:forward,speed=0.5]"
-    clean, commands = parse_commands(text)
-    assert len(commands) == 1
-    assert commands[0]["params"] == "forward"
-    assert commands[0]["speed"] == pytest.approx(0.5)
-    assert "speed" not in clean
-
-
-def test_parse_commands_with_duration():
-    """duration= modifier should be extracted as a float."""
-    text = "On my way! [COMMAND:move:forward,duration=3.0]"
-    clean, commands = parse_commands(text)
-    assert len(commands) == 1
-    assert commands[0]["params"] == "forward"
-    assert commands[0]["duration"] == pytest.approx(3.0)
-
-
-def test_parse_commands_with_speed_and_duration():
-    """Both speed and duration together."""
-    text = "[COMMAND:move:backward,speed=0.8,duration=2.0]"
-    clean, commands = parse_commands(text)
-    assert len(commands) == 1
-    assert commands[0]["params"] == "backward"
-    assert commands[0]["speed"] == pytest.approx(0.8)
-    assert commands[0]["duration"] == pytest.approx(2.0)
-
-
-def test_parse_commands_ignores_unknown_keys():
-    """Unknown keys like turbo=yes should be silently dropped."""
-    text = "[COMMAND:move:forward,turbo=yes,speed=0.5]"
-    clean, commands = parse_commands(text)
-    assert "turbo" not in commands[0]
-    assert commands[0]["speed"] == pytest.approx(0.5)
-
-
-def test_parse_commands_malformed_value():
-    """Non-numeric values like speed=fast should be silently dropped."""
-    text = "[COMMAND:move:forward,speed=fast]"
-    clean, commands = parse_commands(text)
-    assert "speed" not in commands[0]
-    assert commands[0]["params"] == "forward"
-
-
-def test_parse_commands_compound_move():
-    """Compound move like dance should parse correctly."""
-    text = "How exciting! [COMMAND:move:dance]"
-    clean, commands = parse_commands(text)
-    assert len(commands) == 1
-    assert commands[0]["action"] == "move"
-    assert commands[0]["params"] == "dance"
-
-
-def test_parse_commands_compound_with_duration():
-    """Compound move with duration modifier."""
-    text = "[COMMAND:move:spin,duration=2.0]"
-    clean, commands = parse_commands(text)
-    assert commands[0]["params"] == "spin"
-    assert commands[0]["duration"] == pytest.approx(2.0)
-
-
-@pytest.mark.parametrize("skill", ["patrol", "circle", "zigzag", "rush"])
-def test_parse_commands_new_compound_moves(skill):
-    """New compound skills should parse correctly from [COMMAND:move:...] format."""
-    text = f"Here I go! [COMMAND:move:{skill}]"
-    clean, commands = parse_commands(text)
-    assert len(commands) == 1
-    assert commands[0]["action"] == "move"
-    assert commands[0]["params"] == skill
-    assert "Here I go!" in clean
+async def test_brain_client_no_agent_returns_fallback():
+    """BrainClient with no agent returns a fallback reply."""
+    brain = BrainClient()
+    brain._agent = None
+    result = await brain.think("hello")
+    assert "brain isn't connected" in result["reply"]
+    assert result["commands"] == []
 
 
 # --- extract_commands with tool args tests ---
@@ -299,84 +204,6 @@ def test_extract_commands_compound_tool():
     commands = extract_commands([msg])
     assert len(commands) == 1
     assert commands[0] == {"action": "move", "params": "spin", "speed": 0.7}
-
-
-# --- Multimodal vision tests ---
-
-
-async def test_think_inline_with_image():
-    """_think_inline should send multimodal content blocks when image_base64 is provided."""
-    brain = BrainClient(mode="inline")
-    if brain._anthropic is None:
-        pytest.skip("No Anthropic client available")
-
-    mock_response = MagicMock()
-    mock_response.content = [MagicMock(text="I can see something.")]
-
-    brain._anthropic.messages.create = AsyncMock(return_value=mock_response)
-    result = await brain._think_inline("what do you see?", "", "base64data")
-    assert result["reply"] == "I can see something."
-
-    call_kwargs = brain._anthropic.messages.create.call_args.kwargs
-    content = call_kwargs["messages"][0]["content"]
-    assert isinstance(content, list)
-    assert content[0]["type"] == "image"
-    assert content[0]["source"]["data"] == "base64data"
-    assert content[1]["type"] == "text"
-
-
-async def test_think_inline_without_image():
-    """_think_inline without image should send text-only content blocks."""
-    brain = BrainClient(mode="inline")
-    if brain._anthropic is None:
-        pytest.skip("No Anthropic client available")
-
-    mock_response = MagicMock()
-    mock_response.content = [MagicMock(text="Hello.")]
-
-    brain._anthropic.messages.create = AsyncMock(return_value=mock_response)
-    result = await brain._think_inline("hello", "")
-    assert result["reply"] == "Hello."
-
-    call_kwargs = brain._anthropic.messages.create.call_args.kwargs
-    content = call_kwargs["messages"][0]["content"]
-    assert isinstance(content, list)
-    assert len(content) == 1
-    assert content[0]["type"] == "text"
-
-
-async def test_think_server_includes_image():
-    """_think_server should include image_base64 in the POST payload."""
-    brain = BrainClient(mode="server")
-
-    mock_resp = MagicMock()
-    mock_resp.json.return_value = {"reply": "I see it!", "commands": []}
-    mock_resp.raise_for_status = MagicMock()
-
-    brain._http.post = AsyncMock(return_value=mock_resp)
-    result = await brain._think_server("what is this?", "", "http://localhost:8003", "imagedata123")
-    assert result["reply"] == "I see it!"
-
-    call_kwargs = brain._http.post.call_args
-    payload = call_kwargs.kwargs.get("json") or call_kwargs[1]["json"]
-    assert payload["image_base64"] == "imagedata123"
-    assert payload["transcript"] == "what is this?"
-
-
-async def test_think_server_no_image():
-    """_think_server without image should not include image_base64 in payload."""
-    brain = BrainClient(mode="server")
-
-    mock_resp = MagicMock()
-    mock_resp.json.return_value = {"reply": "Hi!", "commands": []}
-    mock_resp.raise_for_status = MagicMock()
-
-    brain._http.post = AsyncMock(return_value=mock_resp)
-    await brain._think_server("hello", "", "http://localhost:8003")
-
-    call_kwargs = brain._http.post.call_args
-    payload = call_kwargs.kwargs.get("json") or call_kwargs[1]["json"]
-    assert "image_base64" not in payload
 
 
 # --- Helpers ---
