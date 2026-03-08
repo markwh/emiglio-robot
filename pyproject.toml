@@ -14,11 +14,13 @@ dependencies = [
     "pydantic-settings>=2.7",
     "httpx>=0.28",
     "ipykernel>=7.2.0",
-    "anthropic>=0.84.0",
     "python-multipart>=0.0.22",
     "openai-whisper>=20240930",
     "elevenlabs>=1.0",
     "langsmith>=0.2",
+    "langchain-core>=0.3",
+    "langchain-anthropic>=0.3",
+    "langgraph>=0.2",
 ]
 
 [project.scripts]
@@ -29,9 +31,6 @@ emiglio-pm = "emiglio_pm.cli:main"
 dev-dependencies = [
     "pytest>=8.0",
     "pytest-asyncio>=0.25",
-    "langchain-core>=0.3",
-    "langchain-anthropic>=0.3",
-    "langgraph>=0.2",
     "jinja2>=3.1",
     "pyyaml>=6.0",
     "gymnasium>=1.0",

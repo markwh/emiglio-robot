@@ -1,14 +1,12 @@
 """Conversation manager — orchestrates the full voice interaction loop.
 
-Flow: mic capture → STT (server) → brain (server) → TTS (server) → speaker + motor commands.
+Flow: mic capture → STT → brain (LangGraph agent) → TTS (ElevenLabs) → speaker + motor commands.
 """
 
 import asyncio
 import base64
 import logging
 import math
-
-import httpx
 
 from langsmith import traceable
 
@@ -95,7 +93,6 @@ class ConversationManager:
         self._stt = stt
         self._tts = tts
         self._policy = policy_executor
-        self._client = httpx.AsyncClient(timeout=30.0)
         self._busy = False
 
     @property
@@ -227,39 +224,23 @@ class ConversationManager:
 
     @traceable(name="stt_transcribe")
     async def _transcribe(self, wav_bytes: bytes) -> str:
-        """Transcribe audio via STTClient or direct HTTP fallback."""
+        """Transcribe audio via STTClient."""
         if self._stt is not None:
             return await self._stt.transcribe(wav_bytes, server_url=settings.server_stt_url)
         return ""
 
     @traceable(name="brain_think")
     async def _think(self, transcript: str, context: str = "", image_base64: str | None = None) -> dict:
-        """Call the brain (inline API or server, depending on config)."""
+        """Call the brain (LangGraph agent with Claude API)."""
         if self._brain is not None:
-            return await self._brain.think(
-                transcript, context, server_url=settings.server_brain_url,
-                image_base64=image_base64,
-            )
-        # Fallback: direct HTTP call (no BrainClient configured)
-        try:
-            payload: dict = {"transcript": transcript, "context": context}
-            if image_base64:
-                payload["image_base64"] = image_base64
-            resp = await self._client.post(
-                f"{settings.server_brain_url}/think",
-                json=payload,
-            )
-            resp.raise_for_status()
-            return resp.json()
-        except Exception as e:
-            logger.error("Brain request failed: %s", e)
-            return {"reply": "Sorry, my brain isn't responding right now.", "commands": []}
+            return await self._brain.think(transcript, context, image_base64=image_base64)
+        return {"reply": "Sorry, my brain isn't connected.", "commands": []}
 
     @traceable(name="tts_synthesize")
     async def _synthesize(self, text: str) -> bytes | None:
-        """Synthesize speech via TTSClient."""
+        """Synthesize speech via TTSClient (ElevenLabs)."""
         if self._tts is not None:
-            return await self._tts.synthesize(text, server_url=settings.server_tts_url)
+            return await self._tts.synthesize(text)
         return None
 
     async def _build_context(self) -> tuple[str, str | None]:
@@ -466,4 +447,4 @@ class ConversationManager:
         await self._bus.publish(Events.MOTOR_COMMAND, MotorCommand(left=0, right=0))
 
     async def close(self) -> None:
-        await self._client.aclose()
+        pass

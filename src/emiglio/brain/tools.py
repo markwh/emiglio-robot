@@ -80,8 +80,7 @@ ALL_TOOLS = [
     spin, wiggle, dance, patrol, circle, zigzag, rush,
 ]
 
-# Maps tool names to the command format that conversation.py expects:
-# {"action": "move", "params": "forward|backward|left|right|stop|spin|wiggle|dance|patrol|circle|zigzag|rush"}
+# Maps tool names to the command format that conversation.py expects
 TOOL_TO_COMMAND: dict[str, dict[str, str]] = {
     "move_forward": {"action": "move", "params": "forward"},
     "move_backward": {"action": "move", "params": "backward"},

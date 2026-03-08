@@ -12,7 +12,7 @@ def configure_tracing() -> bool:
     Sets the environment variables that LangSmith and LangChain SDKs read.
     Returns True if tracing was enabled, False otherwise.
 
-    Call early in startup, before creating LangChain/Anthropic clients.
+    Call early in startup, before creating LangChain clients.
     """
     from emiglio.config import settings
 
@@ -33,29 +33,10 @@ def configure_tracing() -> bool:
     os.environ["LANGSMITH_API_KEY"] = settings.langsmith_api_key
     os.environ["LANGSMITH_PROJECT"] = settings.langsmith_project
 
-    # LangChain auto-tracing env vars (for server-side LangGraph agent)
+    # LangChain auto-tracing env vars (picked up by ChatAnthropic / LangGraph)
     os.environ["LANGCHAIN_TRACING_V2"] = "true"
     os.environ["LANGCHAIN_API_KEY"] = settings.langsmith_api_key
     os.environ["LANGCHAIN_PROJECT"] = settings.langsmith_project
 
     logger.info("LangSmith tracing enabled (project=%s)", settings.langsmith_project)
     return True
-
-
-def wrap_anthropic_client(client):
-    """Wrap an Anthropic client with LangSmith tracing if active.
-
-    Returns the client unmodified when tracing is disabled.
-    """
-    if os.environ.get("LANGSMITH_TRACING") != "true":
-        return client
-
-    try:
-        from langsmith.wrappers import wrap_anthropic
-
-        wrapped = wrap_anthropic(client)
-        logger.info("Anthropic client wrapped with LangSmith tracing")
-        return wrapped
-    except Exception as e:
-        logger.warning("Failed to wrap Anthropic client: %s", e)
-        return client

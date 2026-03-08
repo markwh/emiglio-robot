@@ -1007,7 +1007,7 @@
       }
       vlVoices = data.voices || [];
       vlActiveVoiceId = data.active_voice_id || "";
-      vlCustomId.value = vlActiveVoiceId;
+      vlCustomId.value = "";
 
       vlSelect.innerHTML = "";
       if (vlVoices.length === 0) {
@@ -1048,6 +1048,7 @@
   }
 
   function updateVoiceMeta() {
+    vlCustomId.value = "";
     const id = vlSelect.value;
     const voice = vlVoices.find((v) => v.voice_id === id);
     if (!voice) {

@@ -80,60 +80,6 @@ class TestConfigureTracing:
             assert configure_tracing() is False
 
 
-# --- wrap_anthropic_client tests ---
-
-
-class TestWrapAnthropicClient:
-    def test_noop_when_tracing_disabled(self):
-        from emiglio.observability import wrap_anthropic_client
-
-        client = MagicMock()
-        result = wrap_anthropic_client(client)
-        assert result is client
-
-    def test_wraps_when_tracing_enabled(self):
-        from emiglio.observability import wrap_anthropic_client
-
-        os.environ["LANGSMITH_TRACING"] = "true"
-
-        mock_wrapped = MagicMock()
-        with patch("emiglio.observability.wrap_anthropic", create=True, return_value=mock_wrapped):
-            # Patch the import inside the function
-            import emiglio.observability as obs_mod
-            with patch.object(obs_mod, "wrap_anthropic_client") as _:
-                pass
-
-            # Actually test the real function with a mocked langsmith.wrappers
-            with patch.dict("sys.modules", {"langsmith": MagicMock(), "langsmith.wrappers": MagicMock()}):
-                import sys
-                sys.modules["langsmith.wrappers"].wrap_anthropic = MagicMock(return_value=mock_wrapped)
-                # Re-run
-                result = wrap_anthropic_client(MagicMock())
-                # Should attempt wrapping since LANGSMITH_TRACING is true
-                # The result depends on whether langsmith is actually installed
-                assert result is not None
-
-    def test_returns_original_on_import_error(self):
-        from emiglio.observability import wrap_anthropic_client
-
-        os.environ["LANGSMITH_TRACING"] = "true"
-
-        client = MagicMock()
-        with patch("emiglio.observability.wrap_anthropic", side_effect=ImportError("no langsmith"), create=True):
-            # The function catches exceptions, so it should return the original client
-            # But the import is inside the function, so let's mock at the right level
-            pass
-
-        # If langsmith IS installed (which it should be since we added it as a dep),
-        # this test verifies graceful handling. If wrap_anthropic raises, returns original.
-        # We can't easily force an ImportError on an installed package from inside the function,
-        # so let's test the Exception path instead.
-        original_client = MagicMock()
-        with patch("langsmith.wrappers.wrap_anthropic", side_effect=RuntimeError("boom")):
-            result = wrap_anthropic_client(original_client)
-            assert result is original_client
-
-
 # --- Config fields test ---
 
 
@@ -142,7 +88,7 @@ class TestTracingConfig:
         """Tracing fields have correct defaults."""
         from emiglio.config import Settings
 
-        s = Settings()
+        s = Settings(_env_file=None)
         assert s.tracing_enabled is False
         assert s.tracing_backend == "langsmith"
         assert s.langsmith_api_key == ""
@@ -157,7 +103,7 @@ class TestTracingConfig:
         }
         with patch.dict(os.environ, env):
             from emiglio.config import Settings
-            s = Settings()
+            s = Settings(_env_file=None)
             assert s.tracing_enabled is True
             assert s.langsmith_api_key == "lsv2_test"
             assert s.langsmith_project == "my-project"
