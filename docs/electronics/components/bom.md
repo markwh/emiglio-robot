@@ -7,7 +7,7 @@ Complete parts list for Emiglio electronics. Update the "Have?" column as compon
 | Item | Qty | Est. Cost | Have? | Notes |
 |------|-----|-----------|-------|-------|
 | Raspberry Pi 5 (4GB) | 1 | $60 | YES | Arrived |
-| TB6612FNG motor driver breakout | 1 | $5-8 | NO | Dual H-bridge, 1.2A/ch continuous — STILL NEEDED |
+| TB6612FNG motor driver breakout | 1 | $5-8 | YES | Dual H-bridge, 1.2A/ch continuous |
 | PAM8403 amplifier board | 1 | $2-3 | YES | 2x3W, 5V powered |
 | Half-size breadboard | 1 | $3 | YES | From Elegoo kit |
 | USB-C power supply (5V 3A+) | 1 | $10-15 | YES | Official Pi 5 PSU recommended |
@@ -59,4 +59,4 @@ Complete parts list for Emiglio electronics. Update the "Have?" column as compon
 
 ## Remaining to Purchase
 
-Only the TB6612FNG motor driver (~$5-8). Everything else is on hand.
+All components are on hand. Nothing to buy.

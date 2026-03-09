@@ -65,6 +65,16 @@ Speaker in head dome
 | L-OUT+ | Speaker + | Through neck JST connector |
 | L-OUT- | Speaker - | Through neck JST connector |
 
+## Power Source Decision
+
+**Pi 5V rail confirmed** as power source for the PAM8403 (EL-02 resolved).
+
+- Worst-case total USB-C draw (all peripherals + loud audio) is ~2.4A, well within the 3A PSU budget
+- PAM8403 Class D efficiency (~90%) means minimal waste heat
+- Speech/TTS through a small speaker draws ~200-300mA typical, far below the 600mA peak spec
+- Motors run on separate battery domain, so motor activity doesn't affect 5V rail headroom
+- A separate power supply would add wiring complexity with no benefit at these current levels
+
 ## Notes
 
 - The PAM8403 board includes a small trim potentiometer for volume adjustment

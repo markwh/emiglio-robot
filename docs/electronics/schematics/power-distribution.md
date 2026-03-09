@@ -19,6 +19,8 @@ USB-C (5V 3A+) ──→ Pi 5 USB-C port
                       ├── 3.3V rail (pin 1/17) ──→ TB6612FNG VCC
                       │                            TB6612FNG STBY
                       │
+                      ├── GPIO 24 (pin 18) ──→ LED eye (via 220 ohm resistor)
+                      │
                       ├── USB ports ──→ Camera (USB)
                       │                 Microphone (USB)
                       │
