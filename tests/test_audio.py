@@ -7,7 +7,7 @@ import pytest
 
 try:
     from emiglio.audio.capture import AudioCapture, SAMPLE_RATE, CHANNELS
-    from emiglio.audio.playback import AudioPlayback, _resample, STANDARD_RATES, FALLBACK_RATE
+    from emiglio.audio.playback import AudioPlayback, _resample, FALLBACK_RATE
     _sounddevice_available = True
 except OSError:
     _sounddevice_available = False
@@ -111,9 +111,9 @@ def test_resample_various_nonstandard_rates(weird_rate):
     assert result.dtype == np.int16
 
 
-async def test_play_wav_resamples_nonstandard_rate():
-    """play_wav resamples non-standard sample rates before calling sd.play."""
-    from unittest.mock import patch, MagicMock
+async def test_play_wav_resamples_unsupported_rate():
+    """play_wav resamples when the device doesn't support the rate."""
+    from unittest.mock import patch
 
     wav_bytes = _make_wav(duration=0.1, sample_rate=24255)
     playback = AudioPlayback()
@@ -127,7 +127,8 @@ async def test_play_wav_resamples_nonstandard_rate():
     def mock_wait():
         pass
 
-    with patch("emiglio.audio.playback.sd.play", mock_play), \
+    with patch("emiglio.audio.playback._device_supports_rate", return_value=False), \
+         patch("emiglio.audio.playback.sd.play", mock_play), \
          patch("emiglio.audio.playback.sd.wait", mock_wait):
         await playback.play_wav(wav_bytes)
 
@@ -138,8 +139,35 @@ async def test_play_wav_resamples_nonstandard_rate():
     assert called_with["len"] == expected_samples
 
 
-async def test_play_wav_keeps_standard_rate():
-    """play_wav does NOT resample when the rate is already standard."""
+async def test_play_wav_resamples_standard_rate_unsupported_by_device():
+    """play_wav resamples even 'standard' rates if the device rejects them."""
+    from unittest.mock import patch
+
+    wav_bytes = _make_wav(duration=0.1, sample_rate=22050)
+    playback = AudioPlayback()
+
+    called_with = {}
+
+    def mock_play(audio, samplerate=None):
+        called_with["rate"] = samplerate
+        called_with["len"] = len(audio)
+
+    def mock_wait():
+        pass
+
+    with patch("emiglio.audio.playback._device_supports_rate", return_value=False), \
+         patch("emiglio.audio.playback.sd.play", mock_play), \
+         patch("emiglio.audio.playback.sd.wait", mock_wait):
+        await playback.play_wav(wav_bytes)
+
+    assert called_with["rate"] == FALLBACK_RATE
+    original_samples = int(0.1 * 22050)
+    expected_samples = int(original_samples * FALLBACK_RATE / 22050)
+    assert called_with["len"] == expected_samples
+
+
+async def test_play_wav_keeps_supported_rate():
+    """play_wav does NOT resample when the device supports the rate."""
     from unittest.mock import patch
 
     wav_bytes = _make_wav(duration=0.1, sample_rate=22050)
@@ -153,7 +181,8 @@ async def test_play_wav_keeps_standard_rate():
     def mock_wait():
         pass
 
-    with patch("emiglio.audio.playback.sd.play", mock_play), \
+    with patch("emiglio.audio.playback._device_supports_rate", return_value=True), \
+         patch("emiglio.audio.playback.sd.play", mock_play), \
          patch("emiglio.audio.playback.sd.wait", mock_wait):
         await playback.play_wav(wav_bytes)
 
