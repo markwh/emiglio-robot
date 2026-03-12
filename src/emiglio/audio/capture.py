@@ -8,6 +8,7 @@ import wave
 import numpy as np
 import sounddevice as sd
 
+from emiglio.audio.playback import _resample
 from emiglio.config import settings
 
 logger = logging.getLogger(__name__)
@@ -15,6 +16,23 @@ logger = logging.getLogger(__name__)
 SAMPLE_RATE = 16000  # 16kHz for Whisper
 CHANNELS = 1
 DTYPE = "int16"
+
+
+def _pick_capture_rate(desired: int) -> int:
+    """Return *desired* if the input device supports it, else a fallback."""
+    try:
+        sd.check_input_settings(samplerate=desired)
+        return desired
+    except sd.PortAudioError:
+        pass
+    for rate in (48000, 44100):
+        try:
+            sd.check_input_settings(samplerate=rate)
+            logger.info("Input device doesn't support %dHz, using %dHz", desired, rate)
+            return rate
+        except sd.PortAudioError:
+            continue
+    return desired  # let it fail loudly if nothing works
 
 
 class AudioCapture:
@@ -26,17 +44,26 @@ class AudioCapture:
 
     def __init__(self) -> None:
         self._sample_rate = SAMPLE_RATE
+        self._capture_rate: int | None = None
+
+    @property
+    def capture_rate(self) -> int:
+        if self._capture_rate is None:
+            self._capture_rate = _pick_capture_rate(self._sample_rate)
+        return self._capture_rate
 
     async def record_seconds(self, duration: float = 5.0) -> bytes:
         """Record for a fixed duration, return WAV bytes."""
         logger.info("Recording %.1fs of audio...", duration)
-        frames = int(duration * self._sample_rate)
+        rate = self.capture_rate
+        frames = int(duration * rate)
 
         audio = await asyncio.to_thread(
-            sd.rec, frames, samplerate=self._sample_rate, channels=CHANNELS, dtype=DTYPE
+            sd.rec, frames, samplerate=rate, channels=CHANNELS, dtype=DTYPE
         )
         await asyncio.to_thread(sd.wait)
 
+        audio = self._to_target_rate(audio, rate)
         logger.info("Recording complete (%d samples)", len(audio))
         return self._to_wav(audio)
 
@@ -56,7 +83,8 @@ class AudioCapture:
             chunk_duration: Size of each recording chunk (seconds).
         """
         logger.info("Recording (silence-detect, max %.1fs)...", max_duration)
-        chunk_frames = int(chunk_duration * self._sample_rate)
+        rate = self.capture_rate
+        chunk_frames = int(chunk_duration * rate)
         max_chunks = int(max_duration / chunk_duration)
         silence_chunks_needed = int(silence_duration / chunk_duration)
 
@@ -67,7 +95,7 @@ class AudioCapture:
         for _ in range(max_chunks):
             chunk = await asyncio.to_thread(
                 sd.rec, chunk_frames,
-                samplerate=self._sample_rate, channels=CHANNELS, dtype=DTYPE,
+                samplerate=rate, channels=CHANNELS, dtype=DTYPE,
             )
             await asyncio.to_thread(sd.wait)
             chunks.append(chunk)
@@ -84,9 +112,15 @@ class AudioCapture:
                 logger.info("Silence detected, stopping recording")
                 break
 
-        audio = np.concatenate(chunks)
+        audio = self._to_target_rate(np.concatenate(chunks), rate)
         logger.info("Recorded %d samples (%.1fs)", len(audio), len(audio) / self._sample_rate)
         return self._to_wav(audio)
+
+    def _to_target_rate(self, audio: np.ndarray, recorded_rate: int) -> np.ndarray:
+        """Resample captured audio to the target sample rate if needed."""
+        if recorded_rate == self._sample_rate:
+            return audio
+        return _resample(audio, recorded_rate, self._sample_rate)
 
     def _to_wav(self, audio: np.ndarray) -> bytes:
         """Convert numpy audio array to WAV bytes."""
