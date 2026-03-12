@@ -11,8 +11,16 @@ import sounddevice as sd
 logger = logging.getLogger(__name__)
 
 
-STANDARD_RATES = (8000, 11025, 16000, 22050, 44100, 48000)
 FALLBACK_RATE = 48000
+
+
+def _device_supports_rate(rate: int) -> bool:
+    """Check whether the default output device supports a given sample rate."""
+    try:
+        sd.check_output_settings(samplerate=rate)
+        return True
+    except sd.PortAudioError:
+        return False
 
 
 def _resample(audio: np.ndarray, src_rate: int, dst_rate: int) -> np.ndarray:
@@ -56,12 +64,11 @@ class AudioPlayback:
         if channels > 1:
             audio = audio.reshape(-1, channels)
 
-        # Resample to a standard rate if the WAV has a non-standard one
-        # (e.g. 24255 Hz from the robot pitch-shift effect)
-        if sample_rate not in STANDARD_RATES:
+        # Resample if the device doesn't support this rate
+        if not _device_supports_rate(sample_rate):
             target_rate = FALLBACK_RATE
             logger.info(
-                "Resampling from %dHz to %dHz (non-standard rate)",
+                "Resampling from %dHz to %dHz (unsupported by device)",
                 sample_rate, target_rate,
             )
             audio = _resample(audio, sample_rate, target_rate)
