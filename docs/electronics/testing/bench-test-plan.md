@@ -9,50 +9,50 @@ Test all electronics on the workbench **before** installing inside the robot. Th
 - Multimeter
 - Breadboard + jumper wires
 
-## Phase 1: Pi 5 Smoke Test
+## Phase 1: Pi 5 Smoke Test ✅
 
 **Goal**: Verify the Pi boots and can run the Emiglio software.
 
-- [ ] Flash Raspberry Pi OS to microSD (use Raspberry Pi Imager)
-- [ ] Configure WiFi and SSH during imaging (headless setup)
-- [ ] Insert microSD, connect USB-C power, verify boot (green LED activity)
-- [ ] SSH in: `ssh pi@<ip-address>`
-- [ ] Install project: `git clone`, `uv sync`
-- [ ] Run in mock mode: `EMIGLIO_HARDWARE_MODE=mock uv run python -m emiglio`
-- [ ] Verify web UI accessible at `http://<pi-ip>:8080`
+- [x] Flash Raspberry Pi OS to microSD (use Raspberry Pi Imager)
+- [x] Configure WiFi and SSH during imaging (headless setup)
+- [x] Insert microSD, connect USB-C power, verify boot (green LED activity)
+- [x] SSH in: `ssh pi@<ip-address>`
+- [x] Install project: `git clone`, `uv sync`
+- [x] Run in mock mode: `EMIGLIO_HARDWARE_MODE=mock uv run python -m emiglio`
+- [x] Verify web UI accessible at `http://<pi-ip>:8080`
 
-## Phase 2: Camera + Microphone
+## Phase 2: Camera + Microphone ✅
 
 **Goal**: Verify USB peripherals work with the Pi.
 
-- [ ] Plug in USB camera
-- [ ] Check detection: `ls /dev/video*`
-- [ ] Test capture: `uv run python scripts/camera_test.py`
-- [ ] Verify MJPEG stream in web UI
-- [ ] Plug in USB microphone
-- [ ] Check detection: `arecord -l`
-- [ ] Test recording: `uv run python scripts/audio_test.py`
+- [x] Plug in USB camera
+- [x] Check detection: `ls /dev/video*`
+- [x] Test capture: `uv run python scripts/camera_test.py`
+- [x] Verify MJPEG stream in web UI
+- [x] Plug in USB microphone
+- [x] Check detection: `arecord -l`
+- [x] Test recording: `uv run python scripts/audio_test.py`
 
-## Phase 3: Speaker + Amplifier
+## Phase 3: Speaker + Amplifier ✅
 
 **Goal**: Verify audio output chain.
 
-- [ ] Measure speaker impedance with multimeter (note value: _____ ohms)
-- [ ] Wire PAM8403 on breadboard:
+- [x] Measure speaker impedance with multimeter (note value: **7.7 ohms** — labeled 8 ohm)
+- [x] Wire PAM8403 on breadboard:
   - VCC -> Pi 5V
   - GND -> Pi GND
   - L-IN -> Pi 3.5mm (via aux cable)
   - L-OUT+ -> speaker +
   - L-OUT- -> speaker -
-- [ ] Play test audio: `aplay /usr/share/sounds/alsa/Front_Center.wav`
-- [ ] Adjust PAM8403 trim pot to comfortable volume
-- [ ] Test TTS output through web UI speaker button
+- [x] Play test audio: `aplay /usr/share/sounds/alsa/Front_Center.wav`
+- [x] Adjust PAM8403 trim pot to comfortable volume
+- [x] Test TTS output through web UI speaker button
 
 ## Phase 4: Motor Driver
 
 **Goal**: Verify motor control with TB6612FNG.
 
-- [ ] Wire TB6612FNG on breadboard (see [motor-driver.md](../schematics/motor-driver.md)):
+- [x] Wire TB6612FNG on breadboard (see [motor-driver.md](../schematics/motor-driver.md)):
   - VCC -> Pi 3.3V
   - STBY -> Pi 3.3V
   - GND -> Pi GND
@@ -62,21 +62,20 @@ Test all electronics on the workbench **before** installing inside the robot. Th
   - BIN1/BIN2/PWMB -> GPIO 22/23/13
   - AO1/AO2 -> left motor leads
   - BO1/BO2 -> right motor leads
-- [ ] Measure battery voltage with multimeter: _____ V (expect ~6V)
-- [ ] Run motor test: `EMIGLIO_HARDWARE_MODE=real uv run python scripts/motor_test.py`
-- [ ] Verify: left motor forward, backward
-- [ ] Verify: right motor forward, backward
-- [ ] Verify: both motors simultaneous (forward, turn)
-- [ ] Check motor direction — if reversed, swap AO1/AO2 or BO1/BO2 wires
-- [ ] Measure motor no-load current: _____ mA
-- [ ] Briefly measure stall current (< 1 sec!): _____ mA
+- [x] Measure battery voltage with multimeter: **6.09 V** (expect ~6V)
+- [x] Run motor test: `EMIGLIO_HARDWARE_MODE=real uv run python scripts/motor_test.py`
+- [x] Verify: left motor forward, backward
+- [x] Verify: right motor forward, backward
+- [x] Verify: both motors simultaneous (forward, turn)
+- [x] Check motor direction — if reversed, swap AO1/AO2 or BO1/BO2 wires
+- [ ] Measure motor no-load current: _____ mA (deferred — need alligator clips, do at makerspace)
+- [ ] Briefly measure stall current (< 1 sec!): _____ mA (deferred — need alligator clips, do at makerspace)
 
 ## Phase 5: LED Eye
 
 **Goal**: Verify GPIO-driven LED.
 
-- [ ] Pick a free GPIO pin for LED (e.g., GPIO 24)
-- [ ] Wire on breadboard: GPIO -> 220 ohm resistor -> LED anode (+, long leg) -> LED cathode (-) -> GND
+- [ ] Wire on breadboard: GPIO 24 (pin 18) -> 220 ohm resistor -> LED anode (+, long leg) -> LED cathode (-) -> GND
 - [ ] Test with Python:
   ```python
   from gpiozero import LED
@@ -85,7 +84,7 @@ Test all electronics on the workbench **before** installing inside the robot. Th
   led.off()
   led.blink()
   ```
-- [ ] Note selected GPIO pin for software config update: GPIO _____
+- [ ] Confirm LED visible brightness is adequate for eye socket
 
 ## Phase 6: Full Integration Test
 
