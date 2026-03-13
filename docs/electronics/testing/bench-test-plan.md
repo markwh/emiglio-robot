@@ -33,26 +33,26 @@ Test all electronics on the workbench **before** installing inside the robot. Th
 - [x] Check detection: `arecord -l`
 - [x] Test recording: `uv run python scripts/audio_test.py`
 
-## Phase 3: Speaker + Amplifier
+## Phase 3: Speaker + Amplifier ✅
 
 **Goal**: Verify audio output chain.
 
 - [x] Measure speaker impedance with multimeter (note value: **7.7 ohms** — labeled 8 ohm)
-- [ ] Wire PAM8403 on breadboard:
+- [x] Wire PAM8403 on breadboard:
   - VCC -> Pi 5V
   - GND -> Pi GND
   - L-IN -> Pi 3.5mm (via aux cable)
   - L-OUT+ -> speaker +
   - L-OUT- -> speaker -
-- [ ] Play test audio: `aplay /usr/share/sounds/alsa/Front_Center.wav`
-- [ ] Adjust PAM8403 trim pot to comfortable volume
-- [ ] Test TTS output through web UI speaker button
+- [x] Play test audio: `aplay /usr/share/sounds/alsa/Front_Center.wav`
+- [x] Adjust PAM8403 trim pot to comfortable volume
+- [x] Test TTS output through web UI speaker button
 
 ## Phase 4: Motor Driver
 
 **Goal**: Verify motor control with TB6612FNG.
 
-- [ ] Wire TB6612FNG on breadboard (see [motor-driver.md](../schematics/motor-driver.md)):
+- [x] Wire TB6612FNG on breadboard (see [motor-driver.md](../schematics/motor-driver.md)):
   - VCC -> Pi 3.3V
   - STBY -> Pi 3.3V
   - GND -> Pi GND
@@ -62,14 +62,14 @@ Test all electronics on the workbench **before** installing inside the robot. Th
   - BIN1/BIN2/PWMB -> GPIO 22/23/13
   - AO1/AO2 -> left motor leads
   - BO1/BO2 -> right motor leads
-- [ ] Measure battery voltage with multimeter: _____ V (expect ~6V)
-- [ ] Run motor test: `EMIGLIO_HARDWARE_MODE=real uv run python scripts/motor_test.py`
-- [ ] Verify: left motor forward, backward
-- [ ] Verify: right motor forward, backward
-- [ ] Verify: both motors simultaneous (forward, turn)
-- [ ] Check motor direction — if reversed, swap AO1/AO2 or BO1/BO2 wires
-- [ ] Measure motor no-load current: _____ mA
-- [ ] Briefly measure stall current (< 1 sec!): _____ mA
+- [x] Measure battery voltage with multimeter: **6.09 V** (expect ~6V)
+- [x] Run motor test: `EMIGLIO_HARDWARE_MODE=real uv run python scripts/motor_test.py`
+- [x] Verify: left motor forward, backward
+- [x] Verify: right motor forward, backward
+- [x] Verify: both motors simultaneous (forward, turn)
+- [x] Check motor direction — if reversed, swap AO1/AO2 or BO1/BO2 wires
+- [ ] Measure motor no-load current: _____ mA (deferred — need alligator clips, do at makerspace)
+- [ ] Briefly measure stall current (< 1 sec!): _____ mA (deferred — need alligator clips, do at makerspace)
 
 ## Phase 5: LED Eye
 
