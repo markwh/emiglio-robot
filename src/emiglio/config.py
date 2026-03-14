@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     motor_right_backward: int = 23
     motor_right_enable: int = 13
 
+    # LED GPIO pins (BCM numbering, accent LEDs driven directly from GPIO)
+    led_right_eye: int = 24
+    led_left_eye: int = 25
+    led_right_panel: int = 5
+    led_left_panel: int = 6
+
     # Web server
     web_host: str = "0.0.0.0"
     web_port: int = 8080

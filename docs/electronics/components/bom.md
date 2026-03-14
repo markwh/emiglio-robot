@@ -18,7 +18,8 @@ Complete parts list for Emiglio electronics. Update the "Have?" column as compon
 
 | Item | Qty | Est. Cost | Have? | Notes |
 |------|-----|-----------|-------|-------|
-| JST-XH 4-pin connector pair | 1 | $1 | YES | Neck disconnect (speaker + LED) |
+| JST-XH 6-pin connector pair | 1 | $1 | NO | Neck disconnect (4 LEDs + GND). Replaces original 4-pin |
+| 3.5mm female panel-mount jack | 1 | $1 | YES | Neck audio disconnect (mounted in right eye hole) |
 | USB 2.0 extension cables (~150mm) | 2 | $5 | YES | Neck disconnect (camera + mic) |
 | 22 AWG stranded wire (red) | 2m | $2 | YES | Power, speaker, motor leads |
 | 22 AWG stranded wire (black) | 2m | $2 | YES | Ground bus |
@@ -34,8 +35,8 @@ Complete parts list for Emiglio electronics. Update the "Have?" column as compon
 |------|-----|-----------|-------|-------|
 | USB webcam (small/board style) | 1 | $10-20 | YES | Behind left eye |
 | USB microphone (dongle or MEMS) | 1 | $8-12 | YES | Inside head dome |
-| 5mm red LED | 1 | $0.10 | YES | From Elegoo kit |
-| 220 ohm resistor | 1 | $0.05 | YES | From Elegoo kit, LED current limiting |
+| 5mm red LED | 4 | $0.40 | YES | From Elegoo kit (right eye, left eye, right panel, left panel) |
+| 220Ω resistor | 4 | $0.20 | YES | From Elegoo kit, LED current limiting (one per LED) |
 
 ## Mounting & Misc
 
@@ -59,4 +60,4 @@ Complete parts list for Emiglio electronics. Update the "Have?" column as compon
 
 ## Remaining to Purchase
 
-All components are on hand. Nothing to buy.
+- JST-XH 6-pin connector pair (replaces original 4-pin for LED-only neck connector)

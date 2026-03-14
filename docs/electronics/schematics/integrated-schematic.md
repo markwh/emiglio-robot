@@ -36,9 +36,12 @@ Complete wiring reference for all electrical subsystems. This is the master docu
 │  USB-C ◄── 5V 3A PSU      GPIO 23 (pin 16) ──→ D                   │
 │                            GPIO 13 (pin 33) ──→ D                   │
 │                            GPIO 24 (pin 18) ──→ E                   │
+│                            GPIO 25 (pin 22) ──→ E                   │
+│                            GPIO 5  (pin 29) ──→ E                   │
+│                            GPIO 6  (pin 31) ──→ E                   │
 └─────────────────────────────────────────────────────────────────────┘
-     │  │  │         │  │  │  │  │  │         │     │  │        │
-     A  B  │         │  │  │  │  │  │         E     F  G        H
+     │  │  │         │  │  │  │  │  │     │ │ │ │     │  │        │
+     A  B  │         │  │  │  │  │  │     E E E E     F  G        H
      │  │  │         │  │  │  │  │  │         │     │  │        │
      ▼  ▼  ▼         ▼  ▼  ▼  ▼  ▼  ▼         ▼     ▼  ▼        ▼
 
@@ -62,8 +65,11 @@ Complete wiring reference for all electrical subsystems. This is the master docu
                                          L-OUT+  L-OUT-
                                            │        │
                                       ┌────┴────────┴────┐
-                                      │  JST-XH 4-pin    │
-                                      │  pins 1-2        │ ◄── Neck connector
+                                      │  3.5mm plug      │ ◄── Neck audio connector
+                                      └────┬────────┬────┘
+                                           │        │
+                                      ┌────┴────────┴────┐
+                                      │  3.5mm jack      │ ◄── Mounted in right eye hole
                                       └────┬────────┬────┘
                                            │        │
                                        Speaker+  Speaker-
@@ -102,14 +108,19 @@ Complete wiring reference for all electrical subsystems. This is the master docu
                      └─────────┘                                    └─────────┘
 
 
-── E: LED Eye ─────────────────────────────────────────────────────────────────
+── E: LEDs (4x 5mm red) ──────────────────────────────────────────────────────
 
-  Pi GPIO 24 (pin 18) ──── 26 AWG ──→ 220 ohm resistor ──→ LED anode (+)
-  Pi GND ─────────────────────────────────────────────────→ LED cathode (-)
-      │                                                        │
-      └─── via JST-XH 4-pin neck connector (pins 3-4) ────────┘
+  Pi GPIO 24 (pin 18) ──── 26 AWG ──→ 220Ω ──→ LED+ ──→ LED- ──→ GND  (Right eye)
+  Pi GPIO 25 (pin 22) ──── 26 AWG ──→ 220Ω ──→ LED+ ──→ LED- ──→ GND  (Left eye)
+  Pi GPIO 5  (pin 29) ──── 26 AWG ──→ 220Ω ──→ LED+ ──→ LED- ──→ GND  (Right head panel)
+  Pi GPIO 6  (pin 31) ──── 26 AWG ──→ 220Ω ──→ LED+ ──→ LED- ──→ GND  (Left head panel)
 
-  Current: (3.3V - ~2.0V LED drop) / 220 ohm ≈ 6 mA (safe, visible)
+  All 4 LEDs share a common GND wire.
+  Routed via JST-XH 6-pin neck connector (pins 1-4: signals, pin 5: shared GND).
+  220Ω resistors soldered at LED end (in head) — connector carries logic-level signals only.
+
+  Current per LED: (3.3V - ~2.0V) / 220Ω ≈ 6 mA
+  Total LED current: ~24 mA
 
 
 ── F/G: USB Peripherals ───────────────────────────────────────────────────────
@@ -129,46 +140,49 @@ Every wire in the system:
 | 1 | Pi 5V (pin 2) | PAM8403 VCC | +5V power | 22 AWG | Red | Body breadboard |
 | 2 | Pi GND (pin 6) | PAM8403 GND | Ground | 22 AWG | Black | Body breadboard |
 | 3 | Pi 3.5mm jack | PAM8403 L-IN | Audio signal | — | — | Aux cable (150mm) |
-| 4 | PAM8403 L-OUT+ | JST-XH pin 1 | Speaker + | 22 AWG | Red | Body → neck |
-| 5 | PAM8403 L-OUT- | JST-XH pin 2 | Speaker - | 22 AWG | Black | Body → neck |
-| 6 | JST-XH pin 1 | Speaker + | Speaker + | 22 AWG | Red | Neck → head |
-| 7 | JST-XH pin 2 | Speaker - | Speaker - | 22 AWG | Black | Neck → head |
-| 8 | Pi GPIO 24 (pin 18) | JST-XH pin 3 | LED signal | 26 AWG | White | Body → neck |
-| 9 | Pi GND | JST-XH pin 4 | LED ground | 26 AWG | Green | Body → neck |
-| 10 | JST-XH pin 3 | 220 ohm resistor → LED+ | LED signal | 26 AWG | White | Neck → head |
-| 11 | JST-XH pin 4 | LED cathode (-) | LED ground | 26 AWG | Green | Neck → head |
-| 12 | Pi 3.3V (pin 1) | TB6612FNG VCC | +3.3V logic | 26 AWG | Red | Body breadboard |
-| 13 | Pi 3.3V (pin 1) | TB6612FNG STBY | +3.3V enable | 26 AWG | Red | Jumper on breadboard |
-| 14 | Pi GND | TB6612FNG GND | Logic ground | 22 AWG | Black | Body breadboard |
-| 15 | Pi GPIO 17 (pin 11) | Screw term. #1 → AIN1 | Left fwd | 26 AWG | White | Body → base |
-| 16 | Pi GPIO 27 (pin 13) | Screw term. #2 → AIN2 | Left bwd | 26 AWG | Gray | Body → base |
-| 17 | Pi GPIO 12 (pin 32) | Screw term. #3 → PWMA | Left speed | 26 AWG | Yellow | Body → base |
-| 18 | Pi GPIO 22 (pin 15) | Screw term. #4 → BIN1 | Right fwd | 26 AWG | Blue | Body → base |
-| 19 | Pi GPIO 23 (pin 16) | Screw term. #5 → BIN2 | Right bwd | 26 AWG | Green | Body → base |
-| 20 | Pi GPIO 13 (pin 33) | Screw term. #6 → PWMB | Right speed | 26 AWG | Orange | Body → base |
-| 21 | Pi 3.3V | Screw term. #7 → TB6612 VCC | Logic power | 26 AWG | Red | Body → base |
-| 22 | Pi GND | Screw term. #8 → TB6612 GND | Logic GND | 22 AWG | Black | Body → base |
-| 23 | Battery +6V | TB6612FNG VM | Motor power | 22 AWG | Red | Base |
-| 24 | Battery GND | Screw term. #9 → Pi GND | Common ground | 22 AWG | Black | Base → body |
-| 25 | TB6612FNG AO1 | Left motor + | Motor drive | 22 AWG | — | Base |
-| 26 | TB6612FNG AO2 | Left motor - | Motor drive | 22 AWG | — | Base |
-| 27 | TB6612FNG BO1 | Right motor + | Motor drive | 22 AWG | — | Base |
-| 28 | TB6612FNG BO2 | Right motor - | Motor drive | 22 AWG | — | Base |
-| 29 | Pi USB-A | USB extension → Camera | USB 2.0 | — | — | Body → neck → head |
-| 30 | Pi USB-A | USB extension → Microphone | USB 2.0 | — | — | Body → neck → head |
+| 4 | PAM8403 L-OUT+ | 3.5mm plug tip | Speaker + | 22 AWG | Red | Body → neck (3.5mm) |
+| 5 | PAM8403 L-OUT- | 3.5mm plug sleeve | Speaker - | 22 AWG | Black | Body → neck (3.5mm) |
+| 6 | 3.5mm jack tip | Speaker + | Speaker + | 22 AWG | Red | Neck → head |
+| 7 | 3.5mm jack sleeve | Speaker - | Speaker - | 22 AWG | Black | Neck → head |
+| 8 | Pi GPIO 24 (pin 18) | JST-XH pin 1 | Right eye LED | 26 AWG | White | Body → neck |
+| 9 | Pi GPIO 25 (pin 22) | JST-XH pin 2 | Left eye LED | 26 AWG | Yellow | Body → neck |
+| 10 | Pi GPIO 5 (pin 29) | JST-XH pin 3 | Right panel LED | 26 AWG | Blue | Body → neck |
+| 11 | Pi GPIO 6 (pin 31) | JST-XH pin 4 | Left panel LED | 26 AWG | Green | Body → neck |
+| 12 | Pi GND | JST-XH pin 5 | LED ground (shared) | 26 AWG | Black | Body → neck |
+| 13 | Pi 3.3V (pin 1) | TB6612FNG VCC | +3.3V logic | 26 AWG | Red | Body breadboard |
+| 14 | Pi 3.3V (pin 1) | TB6612FNG STBY | +3.3V enable | 26 AWG | Red | Jumper on breadboard |
+| 15 | Pi GND | TB6612FNG GND | Logic ground | 22 AWG | Black | Body breadboard |
+| 16 | Pi GPIO 17 (pin 11) | Screw term. #1 → AIN1 | Left fwd | 26 AWG | White | Body → base |
+| 17 | Pi GPIO 27 (pin 13) | Screw term. #2 → AIN2 | Left bwd | 26 AWG | Gray | Body → base |
+| 18 | Pi GPIO 12 (pin 32) | Screw term. #3 → PWMA | Left speed | 26 AWG | Yellow | Body → base |
+| 19 | Pi GPIO 22 (pin 15) | Screw term. #4 → BIN1 | Right fwd | 26 AWG | Blue | Body → base |
+| 20 | Pi GPIO 23 (pin 16) | Screw term. #5 → BIN2 | Right bwd | 26 AWG | Green | Body → base |
+| 21 | Pi GPIO 13 (pin 33) | Screw term. #6 → PWMB | Right speed | 26 AWG | Orange | Body → base |
+| 22 | Pi 3.3V | Screw term. #7 → TB6612 VCC | Logic power | 26 AWG | Red | Body → base |
+| 23 | Pi GND | Screw term. #8 → TB6612 GND | Logic GND | 22 AWG | Black | Body → base |
+| 24 | Battery +6V | TB6612FNG VM | Motor power | 22 AWG | Red | Base |
+| 25 | Battery GND | Screw term. #9 → Pi GND | Common ground | 22 AWG | Black | Base → body |
+| 26 | TB6612FNG AO1 | Left motor + | Motor drive | 22 AWG | — | Base |
+| 27 | TB6612FNG AO2 | Left motor - | Motor drive | 22 AWG | — | Base |
+| 28 | TB6612FNG BO1 | Right motor + | Motor drive | 22 AWG | — | Base |
+| 29 | TB6612FNG BO2 | Right motor - | Motor drive | 22 AWG | — | Base |
+| 30 | Pi USB-A | USB extension → Camera | USB 2.0 | — | — | Body → neck → head |
+| 31 | Pi USB-A | USB extension → Microphone | USB 2.0 | — | — | Body → neck → head |
 
-**Total: 30 connections** (24 wires + 2 USB cables + 3.5mm aux cable + JST-XH connector with 4 signals)
+**Total: 31 connections** (25 wires + 2 USB cables + 3.5mm aux cable + 3.5mm neck audio + JST-XH 6-pin LED connector)
 
 ## Physical Layout by Zone
 
 ### Head (detachable via neck)
 - USB webcam (left eye socket)
 - USB microphone (dome interior)
-- 5mm red LED + 220 ohm resistor (right eye socket)
-- Speaker (dome, existing)
+- 4x 5mm red LEDs + 220Ω resistors (right eye, left eye, right panel, left panel)
+- Speaker (dome, existing) — connected via 3.5mm jack in right eye hole
+- 3.5mm female jack (mounted in back of right eye hole)
 
 ### Neck Interface (fully detachable)
-- 1x JST-XH 4-pin: speaker (2 pins) + LED (2 pins)
+- 1x 3.5mm audio: speaker (PAM8403 output)
+- 1x JST-XH 6-pin: 4 LED signals + shared GND (1 spare)
 - 2x USB-A extension: camera + microphone
 
 ### Body Barrel (main electronics)
@@ -204,9 +218,12 @@ See [power-distribution.md](power-distribution.md) and [power-budget](../power/p
 | 22 | 15 | BIN1 (right fwd) | Motor driver |
 | 23 | 16 | BIN2 (right bwd) | Motor driver |
 | 13 | 33 | PWMB (right speed) | Motor driver |
-| 24 | 18 | LED eye | LED |
+| 24 | 18 | Right eye LED | LED |
+| 25 | 22 | Left eye LED | LED |
+| 5 | 29 | Right head panel LED | LED |
+| 6 | 31 | Left head panel LED | LED |
 
-9 GPIOs remain available. See [gpio-pinout.md](../wiring/gpio-pinout.md) for the full header map.
+6 GPIOs remain available. See [gpio-pinout.md](../wiring/gpio-pinout.md) for the full header map.
 
 ## Cross-References
 
