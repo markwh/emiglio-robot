@@ -13,9 +13,9 @@ Powers the Pi and all logic/peripheral systems.
 | USB microphone | 5V | 50 | 100 | Small dongle |
 | PAM8403 idle | 5V | 5 | 5 | Class D, very low quiescent |
 | PAM8403 playing | 5V | 300 | 600 | Depends on volume + speaker impedance |
-| LED eye | 3.3V* | 15 | 20 | Via GPIO, current-limited by resistor |
+| LEDs (4x red) | 3.3V* | 24 | 24 | 4x ~6 mA each, via GPIO + 220Ω resistor |
 | TB6612FNG logic | 3.3V* | 5 | 10 | VCC + STBY |
-| **Total** | | **~1175** | **~2435** | |
+| **Total** | | **~1184** | **~2439** | |
 
 *3.3V is derived from the Pi's onboard regulator, powered from USB-C 5V.
 

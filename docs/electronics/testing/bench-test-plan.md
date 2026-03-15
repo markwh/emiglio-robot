@@ -71,20 +71,27 @@ Test all electronics on the workbench **before** installing inside the robot. Th
 - [ ] Measure motor no-load current: _____ mA (deferred — need alligator clips, do at makerspace)
 - [ ] Briefly measure stall current (< 1 sec!): _____ mA (deferred — need alligator clips, do at makerspace)
 
-## Phase 5: LED Eye
+## Phase 5: LEDs (4x red) ✅
 
-**Goal**: Verify GPIO-driven LED.
+**Goal**: Verify all 4 GPIO-driven LEDs.
 
-- [ ] Wire on breadboard: GPIO 24 (pin 18) -> 220 ohm resistor -> LED anode (+, long leg) -> LED cathode (-) -> GND
-- [ ] Test with Python:
-  ```python
-  from gpiozero import LED
-  led = LED(24)
-  led.on()   # should light up
-  led.off()
-  led.blink()
-  ```
-- [ ] Confirm LED visible brightness is adequate for eye socket
+Each LED circuit: GPIO pin → 220Ω resistor → LED anode (+, long leg) → LED cathode (-) → GND
+
+LED assemblies built with solder-seal connectors on 26 AWG wires (color-coded signal wires: white=R-eye, yellow=L-eye, blue=R-panel, green=L-panel, black=ground).
+
+| LED | GPIO | Physical Pin | Location |
+|-----|------|-------------|----------|
+| Right eye | 24 | 18 | Right eye socket |
+| Left eye | 25 | 22 | Left eye socket |
+| Right panel | 5 | 29 | Right head panel (behind blue panel) |
+| Left panel | 6 | 31 | Left head panel (behind red panel) |
+
+- [x] Wire right eye LED on breadboard and test
+- [x] Wire left eye LED on breadboard and test
+- [x] Wire right panel LED on breadboard and test
+- [x] Wire left panel LED on breadboard and test
+- [x] Test all 4 individually via `gpiozero.LED` — all functional
+- [x] Confirm brightness is adequate
 
 ## Phase 6: Full Integration Test
 

@@ -11,31 +11,31 @@ This document covers the electrical connections between head-mounted components 
 │                                                         │
 │  USB Webcam ──USB─┐   USB Mic ──USB─┐                  │
 │                   │                 │                   │
-│  Speaker ──2wire──┤   LED ──2wire───┤                   │
-│  (existing)  ┌────┘            ┌────┘                   │
-│              │                 │                        │
-└──────────────┼─────────────────┼────────────────────────┘
-               │                 │
-         ● JST-XH 4-pin ●   ● USB sockets ●  ← NECK CONNECTORS
-         (speaker + LED)    (cam + mic)
-               │                 │
-┌──────────────┼─────────────────┼────────────────────────┐
-│              │                 │              BODY       │
-│              │                 │                         │
-│   ┌──────────┘                 └──────────┐              │
-│   │ speaker+  speaker-  LED+  LED-        │              │
-│   │    │         │       │      │         │              │
-│   │    └────┬────┘       │      │     USB cam ──→ Pi USB│
-│   │         │            │      │     USB mic ──→ Pi USB│
-│   │    PAM8403 OUT       │      │                       │
-│   │    (amplified        GPIO pin                       │
-│   │     audio)           (BCM TBD)                      │
-│   │         │                                           │
-│   │    PAM8403 IN                                       │
-│   │         │                                           │
-│   │    Pi 3.5mm / I2S / USB audio out                   │
-│   │                                                     │
-└───┼─────────────────────────────────────────────────────┘
+│  Speaker ──wire───┤   4x LEDs ─────┤                   │
+│  (existing)  ┌────┘  (5-wire) ┌────┘                   │
+│              │                │                         │
+│  3.5mm jack ─┘                │                         │
+│  (right eye hole)             │                         │
+└──────────────┬────────────────┼────────────────────────┘
+               │                │
+      ● 3.5mm plug ●   ● JST-XH 6-pin ●  ● USB sockets ● ← NECK
+       (speaker)         (4 LEDs+GND)      (cam + mic)
+               │                │                │
+┌──────────────┼────────────────┼────────────────┼───────┐
+│              │                │                │ BODY   │
+│   ┌──────────┘    ┌──────────┘    ┌───────────┘        │
+│   │               │               │                    │
+│   │          4x GPIO pins    USB cam ──→ Pi USB        │
+│   │          + shared GND    USB mic ──→ Pi USB        │
+│   │                                                    │
+│   PAM8403 OUT                                          │
+│   (amplified audio)                                    │
+│        │                                               │
+│   PAM8403 IN                                           │
+│        │                                               │
+│   Pi 3.5mm audio out                                   │
+│                                                        │
+└────────────────────────────────────────────────────────┘
 ```
 
 ## Connection Details
@@ -79,45 +79,58 @@ Pi audio out → PAM8403 input → PAM8403 amplified output → Speaker
 | Segment | Cable | Notes |
 |---------|-------|-------|
 | Pi → PAM8403 input | 3.5mm aux cable or direct solder | Analog audio from Pi headphone jack |
-| PAM8403 → Speaker | 2-conductor, ~22 AWG | Runs through neck to head |
+| PAM8403 → 3.5mm plug | 2-conductor, ~22 AWG | Short cable to 3.5mm male plug |
 
 **PAM8403 details:**
 - Input: Stereo 3.5mm or bare wire from Pi audio out
 - Output: 2x 3W channels (we use one channel, mono)
 - Power: 5V from Pi's 5V pin or USB power
 - The PAM8403 board lives in the **body** (near the Pi), not in the head
-- Only the amplified speaker wires go up through the neck
 
-**Speaker wire at neck connector:**
-- 2 pins on the JST-XH 4-pin connector (pins 1-2)
-- Polarity matters — mark + and - on both sides
+**Speaker audio at neck:**
+- 3.5mm female jack mounted in the back of the right eye hole
+- PAM8403 L-OUT connects via a short 3.5mm male plug from body
+- Tip = speaker +, sleeve = speaker -
+- Separate from LED connector for clean cable management
 
-### LED Eye → Pi GPIO
+### LEDs → Pi GPIO (4x 5mm red)
 
-| Parameter | Value |
-|-----------|-------|
-| LED type | Standard 5mm red LED (or RGB/NeoPixel for status colors) |
-| Resistor | 220Ω–330Ω in series (for 3.3V GPIO → standard red LED) |
-| GPIO pin | TBD — to be assigned by electronics workstream |
-| Cable | 2-conductor, ~26 AWG (thin signal wire) |
+| LED | GPIO (BCM) | Physical Pin | Location |
+|-----|-----------|-------------|----------|
+| Right eye | 24 | 18 | Right eye socket |
+| Left eye | 25 | 22 | Left eye socket |
+| Right panel | 5 | 29 | Right head panel (behind blue panel) |
+| Left panel | 6 | 31 | Left head panel (behind red panel) |
 
-**LED wire at neck connector:**
-- 2 pins on the JST-XH 4-pin connector (pins 3-4)
-- Pin 3: GPIO signal (through resistor, which can be soldered at either end)
-- Pin 4: Ground
+Each LED: 220Ω resistor in series, ~6 mA per LED, ~24 mA total.
 
-**Resistor placement:** Solder the current-limiting resistor at the LED end (in the head) so the neck connector carries only logic-level signals. This makes it safe to disconnect without risk of shorting a powered LED.
+**LED wires at neck connector:**
+- JST-XH 6-pin connector (pins 1-4: LED signals, pin 5: shared GND, pin 6: spare)
+- All 4 LEDs share a single ground return wire
+
+**Resistor placement:** Solder the current-limiting resistor at the LED end (in the head) so the connector carries only logic-level signals. This makes it safe to disconnect without risk of shorting a powered LED.
 
 ## Neck Connector Pinout
 
-### JST-XH 4-pin (speaker + LED)
+### 3.5mm Audio Jack (speaker)
+
+Mounted in the back of the right eye hole.
+
+| Contact | Signal |
+|---------|--------|
+| Tip | Speaker + (PAM8403 L-OUT+) |
+| Sleeve | Speaker - (PAM8403 L-OUT-) |
+
+### JST-XH 6-pin (LEDs)
 
 | Pin | Signal | Color suggestion |
 |-----|--------|-----------------|
-| 1 | Speaker + | Red |
-| 2 | Speaker - | Black |
-| 3 | LED signal (through resistor) | White |
-| 4 | LED ground | Green |
+| 1 | Right eye LED (GPIO 24) | White |
+| 2 | Left eye LED (GPIO 25) | Yellow |
+| 3 | Right panel LED (GPIO 5) | Blue |
+| 4 | Left panel LED (GPIO 6) | Green |
+| 5 | LED ground (shared) | Black |
+| 6 | (spare) | — |
 
 ### USB pass-through
 
@@ -131,14 +144,14 @@ Two USB extension socket → plug pairs:
 1. **Test components on the bench first** — connect camera, mic, and speaker to Pi outside the robot. Run the test scripts to verify everything works.
 
 2. **Prepare head-side wiring:**
-   - Solder speaker wires to existing speaker (or replacement)
-   - Solder LED + resistor
-   - Crimp/solder JST-XH female connector on speaker + LED wires
+   - Wire speaker to 3.5mm female jack (mount in right eye hole)
+   - Solder 4x LED + resistor assemblies
+   - Crimp/solder JST-XH 6-pin female connector on LED wires
    - Attach USB cables to camera and mic modules
 
 3. **Prepare body-side wiring:**
-   - Solder JST-XH male connector to matching wires
-   - Route speaker wires to PAM8403 output terminals
+   - Solder JST-XH 6-pin male connector to matching wires
+   - Solder 3.5mm male plug to PAM8403 output wires
    - Route LED wires to breadboard / Pi GPIO
    - Mount USB extension sockets near neck rim
 
@@ -148,7 +161,7 @@ Two USB extension socket → plug pairs:
    - Leave ~50 mm slack in head for serviceability
 
 5. **Connect and test:**
-   - Plug in USB and JST connectors
+   - Plug in USB, JST, and 3.5mm connectors
    - Place head on body
    - Run test scripts to verify all I/O
 
@@ -160,8 +173,8 @@ Two USB extension socket → plug pairs:
 
 The following details are owned by `develop-electronics` and should be finalized there before committing to wiring:
 
-- [ ] LED GPIO pin assignment (BCM number)
-- [ ] PAM8403 power source (Pi 5V pin vs. separate regulator)
-- [ ] Audio output method from Pi (3.5mm jack vs. I2S vs. USB DAC)
-- [ ] Whether to use USB mic or I2S mic (affects cable count through neck)
-- [ ] Full circuit schematic with component values
+- [x] LED GPIO pin assignments — BCM 24, 25, 5, 6
+- [x] PAM8403 power source — Pi 5V pin
+- [x] Audio output method — Pi 3.5mm jack → PAM8403 → 3.5mm neck connector
+- [x] Microphone type — USB mic dongle
+- [x] Full circuit schematic with component values

@@ -23,15 +23,18 @@ All pin numbers use BCM (Broadcom) numbering. The Pi 5 has the same 40-pin heade
 | 5V | 2 or 4 | PAM8403 VCC | 22 AWG |
 | GND | 6, 9, 14, 20, 25, 30, 34, 39 | Common ground bus | 22 AWG |
 
-### LED Eye
+### LEDs (4x 5mm red, each with 220Ω current-limiting resistor)
 
 | Signal | BCM GPIO | Physical Pin | Direction | Wire Gauge | Notes |
 |--------|----------|-------------|-----------|------------|-------|
-| LED anode | 24 | 18 | Output | 26 AWG | Via 220 ohm resistor, 3.3V logic |
+| Right eye LED | 24 | 18 | Output | 26 AWG | Via 220Ω resistor, ~6 mA |
+| Left eye LED | 25 | 22 | Output | 26 AWG | Via 220Ω resistor, ~6 mA |
+| Right head panel LED | 5 | 29 | Output | 26 AWG | Via 220Ω resistor, ~6 mA |
+| Left head panel LED | 6 | 31 | Output | 26 AWG | Via 220Ω resistor, ~6 mA |
 
 ### Unallocated / Available
 
-GPIO 4, 5, 6, 16, 19, 20, 21, 25, 26 are free for future use (sensors, servos, NeoPixels, etc.)
+GPIO 4, 16, 19, 20, 21, 26 are free for future use (sensors, servos, NeoPixels, etc.)
 
 ## 40-Pin Header Visual
 
@@ -54,22 +57,22 @@ GPIO 4, 5, 6, 16, 19, 20, 21, 25, 26 are free for future use (sensors, servos, N
   [AIN2] GPIO27     │ ←    ↕        │
                     │ (15) ●  ○  (16) │ GPIO23   [BIN2] →
   [BIN1] GPIO22     │ ←              │ ←
-                    │ (17) ●  ●  (18) │ GPIO24   [LED] →
+                    │ (17) ●  ●  (18) │ GPIO24   [R-EYE LED] →
               3.3V  │         ↕        │
                     │ (19) ○  ○  (20) │ GND
               MOSI  │         ↕        │
-                    │ (21) ○  ○  (22) │ GPIO25
-              MISO  │                  │
+                    │ (21) ○  ●  (22) │ GPIO25   [L-EYE LED] →
+              MISO  │         ↕        │
                     │ (23) ○  ○  (24) │ GPIO8
               SCLK  │                  │ CE0
                     │ (25) ●  ○  (26) │ GPIO7
               GND   │                  │ CE1
                     │ (27) ○  ○  (28) │ GPIO1
               ID_SD │                  │ ID_SC
-                    │ (29) ○  ●  (30) │ GND
-              GPIO5 │         ↕        │
-                    │ (31) ○  ●  (32) │ GPIO12   [PWMA] →
-              GPIO6 │         ↕        │ ← Hardware PWM0
+                    │ (29) ●  ●  (30) │ GND
+  [R-PANEL] GPIO5   │ ←    ↕        │
+                    │ (31) ●  ●  (32) │ GPIO12   [PWMA] →
+  [L-PANEL] GPIO6   │ ←    ↕        │ ← Hardware PWM0
                     │ (33) ●  ●  (34) │ GND
   [PWMB] GPIO13    │ ←    ↕        │
               PWM1  │                  │
@@ -89,4 +92,4 @@ GPIO 4, 5, 6, 16, 19, 20, 21, 25, 26 are free for future use (sensors, servos, N
 - STBY (standby) is tied to VCC (always enabled); could be moved to a GPIO for software sleep mode (v2.0)
 - Pi 5 uses the RP1 I/O controller — gpiozero works the same as Pi 4B
 - All motor GPIOs are directly routed to the base via the 9-wire body-to-base connector
-- LED GPIO 24 is routed to the head via the JST-XH 4-pin neck connector (pins 3-4: LED signal + GND)
+- LED GPIOs 24, 25, 5, 6 are routed to the head via a 5-pin neck connector (4 LED signals + shared GND)
