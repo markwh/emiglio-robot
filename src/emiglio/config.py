@@ -22,10 +22,11 @@ class Settings(BaseSettings):
     web_host: str = "0.0.0.0"
     web_port: int = 8080
 
-    # STT mode: "inline" (local whisper) or "server" (HTTP to Docker service)
-    stt_mode: str = "inline"
+    # STT mode: "elevenlabs" (default), "inline" (local whisper), or "server" (HTTP)
+    stt_mode: str = "elevenlabs"
     stt_model: str = "small"
     stt_language: str = "en"
+    stt_elevenlabs_model: str = "scribe_v2"
     server_stt_url: str = Field(
         default="http://localhost:8001",
         validation_alias=AliasChoices("SERVER_STT_URL", "EMIGLIO_SERVER_STT_URL"),

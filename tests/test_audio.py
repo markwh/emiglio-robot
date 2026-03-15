@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 try:
-    from emiglio.audio.capture import AudioCapture, SAMPLE_RATE, CHANNELS
+    from emiglio.audio.capture import AudioCapture, SAMPLE_RATE, CHANNELS, _pick_capture_rate
     from emiglio.audio.playback import AudioPlayback, _resample, FALLBACK_RATE
     _sounddevice_available = True
 except OSError:
@@ -187,3 +187,49 @@ async def test_play_wav_keeps_supported_rate():
         await playback.play_wav(wav_bytes)
 
     assert called_with["rate"] == 22050
+
+
+# --- Capture rate selection tests ---
+
+
+def test_pick_capture_rate_uses_desired_when_supported():
+    """_pick_capture_rate returns the desired rate if the device supports it."""
+    from unittest.mock import patch
+
+    with patch("emiglio.audio.capture.sd.check_input_settings"):
+        assert _pick_capture_rate(16000) == 16000
+
+
+def test_pick_capture_rate_falls_back_when_unsupported():
+    """_pick_capture_rate falls back to 48000 if desired rate is rejected."""
+    from unittest.mock import patch
+    import sounddevice as sd
+
+    def reject_16k(samplerate=None):
+        if samplerate == 16000:
+            raise sd.PortAudioError("nope")
+
+    with patch("emiglio.audio.capture.sd.check_input_settings", side_effect=reject_16k):
+        assert _pick_capture_rate(16000) == 48000
+
+
+async def test_capture_resamples_to_target_rate():
+    """When device records at 48kHz, output WAV is still 16kHz."""
+    from unittest.mock import patch
+
+    capture = AudioCapture()
+    capture._capture_rate = 48000  # simulate device that only does 48k
+
+    # 0.1s at 48kHz = 4800 samples
+    fake_audio = np.zeros((4800, 1), dtype=np.int16)
+
+    with patch("emiglio.audio.capture.sd.rec", return_value=fake_audio), \
+         patch("emiglio.audio.capture.sd.wait"):
+        wav_bytes = await capture.record_seconds(duration=0.1)
+
+    buf = io.BytesIO(wav_bytes)
+    with wave.open(buf, "rb") as wf:
+        assert wf.getframerate() == SAMPLE_RATE  # 16000, not 48000
+        n_frames = wf.getnframes()
+        # 4800 samples at 48k -> ~1600 samples at 16k
+        assert n_frames == int(4800 * 16000 / 48000)
