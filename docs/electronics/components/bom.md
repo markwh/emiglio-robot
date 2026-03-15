@@ -18,7 +18,7 @@ Complete parts list for Emiglio electronics. Update the "Have?" column as compon
 
 | Item | Qty | Est. Cost | Have? | Notes |
 |------|-----|-----------|-------|-------|
-| JST-XH 6-pin connector pair | 1 | $1 | NO | Neck disconnect (4 LEDs + GND). Replaces original 4-pin |
+| JST-XH 6-pin connector pair | 1 | $1 | YES | Neck disconnect (4 LEDs + GND). Replaces original 4-pin |
 | 3.5mm female panel-mount jack | 1 | $1 | YES | Neck audio disconnect (mounted in right eye hole) |
 | USB 2.0 extension cables (~150mm) | 2 | $5 | YES | Neck disconnect (camera + mic) |
 | 22 AWG stranded wire (red) | 2m | $2 | YES | Power, speaker, motor leads |
@@ -60,4 +60,4 @@ Complete parts list for Emiglio electronics. Update the "Have?" column as compon
 
 ## Remaining to Purchase
 
-- JST-XH 6-pin connector pair (replaces original 4-pin for LED-only neck connector)
+All components are on hand. Nothing to buy.
