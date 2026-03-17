@@ -65,17 +65,16 @@ The barrel is an open-top cylinder with arm sockets on both sides. Its interior 
 - **Seam line** — the barrel shell is formed from two halves joined at a vertical seam. Can be separated for access if needed, but ideally electronics are accessible from the top
 - **Decorative panels/stickers** — front has a circular grille sticker feature. These are cosmetic only but contribute to the vintage aesthetic
 
-## The Oatmeal Canister Idea
+## Electronics Enclosure: Webcam Box
 
-From the transcript (3:51–5:01): *"I'm thinking maybe even like an oatmeal canister — you know, one of those cardboard ones — and I just stick it in there and I could extract it to see what I need."*
-
-**Concept:** Use a cylindrical container (oatmeal canister, large PVC pipe section, or similar) as a removable internal sled/tray. All electronics mount to this inner canister. To service: lift the head off, pull the canister out, work on electronics on the bench, slide it back in.
+**Concept:** A small cardboard box (the box the USB webcam arrived in) serves as a removable electronics module inside the barrel. The Pi 5 and half-size breadboard mount against different interior surfaces of the box, with all connections made inside. Holes cut in the box provide cable pass-through, airflow, and access.
 
 **Advantages:**
-- Electronics are fully accessible without disassembling the robot
+- Electronics are fully accessible without disassembling the robot — pull the box out to service
 - Protects vintage plastic shell from hot glue / drilling / permanent modification
 - Can be pre-wired and tested outside the robot
-- Provides a rigid mounting surface for the Pi and breadboard
+- Rigid mounting surface for the Pi and breadboard
+- Rectangular box fits the rectangular components better than a cylindrical canister
 
 **Implementation:**
 
@@ -84,29 +83,24 @@ From the transcript (3:51–5:01): *"I'm thinking maybe even like an oatmeal can
          ↓
     ┌─────────────────────┐  ← barrel rim
     │  ┌───────────────┐  │
-    │  │               │  │  ← canister (slides in/out)
-    │  │  Pi 5         │  │
-    │  │  Breadboard   │  │
-    │  │  PAM8403      │  │
+    │  │  webcam box   │  │  ← removable electronics module
     │  │               │  │
-    │  │  cables exit  │  │
-    │  │  through slot │  │
-    │  │  at bottom ───┼──┼──→ to base connector
+    │  │  Pi 5 (wall)  │  │
+    │  │  breadboard   │  │
+    │  │  (other wall) │  │
+    │  │               │  │
+    │  │  holes for:   │  │
+    │  │  - cables ────┼──┼──→ to base / head connectors
+    │  │  - ventilation│  │
     │  └───────────────┘  │
     └─────────────────────┘  ← barrel floor
 ```
 
-**Canister requirements:**
-- Diameter: slightly less than barrel interior diameter (needs to slide freely)
-- Height: barrel interior height minus ~20 mm clearance for head cables at top
-- Material: cardboard (oatmeal canister), thin plastic pipe, or rolled corrugated plastic
-- A slot or notch cut in the bottom edge allows cables to exit to the base
-- A slot or notch at the top edge allows cables to exit to the head connector
-
-**Measurements needed:**
-- [ ] Barrel interior diameter (mm) — this determines canister max diameter
-- [ ] Barrel interior height (mm) — canister must be shorter
-- [ ] A standard Quaker Oats large canister is ~130 mm diameter x 240 mm tall — check if this fits
+**Holes to cut in box:**
+- **Top edge:** JST-XH 6-pin (head LEDs), 3.5mm audio (speaker), 2x USB (camera + mic)
+- **Bottom edge:** 2x JST-XH 5-pin (base motor harnesses)
+- **Rear/side:** USB-C power cable entry
+- **Ventilation:** Several ~15mm holes or a slot grid near the Pi SoC to prevent heat buildup
 
 ## Components to Mount
 
@@ -201,26 +195,26 @@ The body is the junction point. Cables arrive from two directions:
 
 ### From above (head)
 
-Through the barrel rim / neck opening:
+Through the box top / barrel rim / neck opening:
 - 2x USB cables (camera, mic)
-- 1x JST-XH 4-pin (speaker out, LED signal)
+- 1x JST-XH 6-pin (4 LED signals + shared GND + spare)
+- 1x 3.5mm audio plug (speaker from PAM8403)
 
 These plug into:
 - USB cables → Pi USB ports
-- Speaker wires → PAM8403 output terminals (via breadboard)
-- LED wires → Pi GPIO pin (via breadboard)
+- LED JST wires → Pi GPIO pins 24, 25, 5, 6 (via breadboard)
+- 3.5mm plug → 3.5mm jack on head speaker cable
 
 ### From below (base)
 
-Through the barrel floor / base-to-body connector:
-- 6x GPIO signal wires (motor control)
-- 1x 3.3V power wire
-- 1x GND wire
+Through the box bottom / barrel floor:
+- 1x JST-XH 5-pin "L" (AIN1, AIN2, PWMA, VCC, GND)
+- 1x JST-XH 5-pin "R" (BIN1, BIN2, PWMB, VCC, GND)
 
 These connect to:
-- GPIO wires → Pi GPIO header (via breadboard or direct jumper)
-- 3.3V → Pi 3.3V pin
-- GND → Pi GND pin (shared with motor battery GND)
+- Motor control signals → Pi GPIO header (via breadboard or direct jumper)
+- VCC → Pi 3.3V pin (duplicated on both connectors for redundancy)
+- GND → Pi GND pin (shared with motor battery GND via base breadboard)
 
 ### Power in
 
@@ -289,7 +283,7 @@ Before starting assembly, measure and record on the physical body:
 | Decision | Choice | Why |
 |----------|--------|-----|
 | Pi location | Body barrel (in canister) | Central hub, cable access to head and base, most space |
-| Canister/sled | Yes — removable inner container | Easy access, no permanent shell modification (except power hole), bench-testable |
+| Electronics enclosure | Webcam box (cardboard) — removable module | Easy access, no permanent shell modification (except power hole), bench-testable, rectangular shape fits Pi + breadboard well |
 | Pi orientation | Horizontal on canister floor | Simplest for prototyping; USB ports face up toward head cables |
 | Power input | USB-C through rear wall hole (v1.0) | Simple, one small permanent modification; future battery eliminates it |
 | Breadboard | Inside canister, next to Pi | Prototyping flexibility; avoids permanent soldering |

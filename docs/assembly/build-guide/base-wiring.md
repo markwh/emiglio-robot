@@ -7,32 +7,35 @@ This document covers the electrical connections for the locomotion base: motors 
 ## System Diagram
 
 ```
-                         BODY (Pi lives here)
+                    BODY (webcam box, Pi lives here)
     ┌──────────────────────────────────────────────────┐
     │                                                  │
     │   Raspberry Pi 5                                 │
     │   ┌──────────────────────┐                       │
     │   │ GPIO 17 (BCM) ──────┼── AIN1 ─┐             │
-    │   │ GPIO 27 (BCM) ──────┼── AIN2 ─┤             │
-    │   │ GPIO 12 (BCM) ──────┼── PWMA ─┤             │
-    │   │ GPIO 22 (BCM) ──────┼── BIN1 ─┤             │
-    │   │ GPIO 23 (BCM) ──────┼── BIN2 ─┤ 9-wire     │
-    │   │ GPIO 13 (BCM) ──────┼── PWMB ─┤ bundle     │
+    │   │ GPIO 27 (BCM) ──────┼── AIN2 ─┤ JST-XH     │
+    │   │ GPIO 12 (BCM) ──────┼── PWMA ─┤ 5-pin "L"  │
     │   │ 3.3V ───────────────┼── VCC ──┤             │
-    │   │ GND ────────────────┼── GND ──┤             │
-    │   │ GND ────────────────┼── BGND ─┘ (batt GND)  │
+    │   │ GND ────────────────┼── GND ──┘             │
+    │   │                     │                        │
+    │   │ GPIO 22 (BCM) ──────┼── BIN1 ─┐             │
+    │   │ GPIO 23 (BCM) ──────┼── BIN2 ─┤ JST-XH     │
+    │   │ GPIO 13 (BCM) ──────┼── PWMB ─┤ 5-pin "R"  │
+    │   │ 3.3V ───────────────┼── VCC ──┤             │
+    │   │ GND ────────────────┼── GND ──┘             │
     │   └──────────────────────┘                       │
     │                                                  │
     └──────────────────────┼───────────────────────────┘
                            │
-                    ═══ CONNECTOR ═══  (base-to-body interface)
+              ═══ 2x JST-XH 5-pin ═══  (base-to-body interface)
+                     "L"       "R"
                            │
     ┌──────────────────────┼───────────────────────────┐
     │                      │                  BASE     │
-    │              TB6612FNG Board                      │
+    │              TB6612FNG Board                     │
     │   ┌──────────────────────────────┐               │
     │   │ VCC ←── 3.3V (logic power)   │               │
-    │   │ GND ←── Pi GND              │               │
+    │   │ GND ←── Pi GND               │               │
     │   │ STBY ──── tied to VCC        │               │
     │   │                              │               │
     │   │ AIN1 ←── GPIO 17 (left fwd)  │               │
@@ -47,11 +50,11 @@ This document covers the electrical connections for the locomotion base: motors 
     │   │ BO1 ────→ Motor R terminal + │               │
     │   │ BO2 ────→ Motor R terminal - │               │
     │   │                              │               │
-    │   │ VM ←──── Battery + (6V from D cells)      │               │
-    │   │ GND ←─── Battery - (GND)    │               │
+    │   │ VM ←──── Battery + (6V D cells) │            │
+    │   │ GND ←─── Battery - (GND)     │               │
     │   └──────────────────────────────┘               │
     │                                                  │
-    │   D-Cell Battery Pack                              │
+    │   D-Cell Battery Pack                            │
     │   ┌──────────────┐                               │
     │   │ + (6V) ──→ VM│                               │
     │   │ - (GND) ─→ GND + Pi GND (common ground)     │
@@ -111,51 +114,53 @@ All pins use **BCM numbering** (not physical board pin numbers).
 
 ### What crosses the interface
 
-9 wires total:
+10 wires across 2 connectors (2x JST-XH 5-pin), split by motor side:
 
-| Wire # | Signal | Direction | Gauge |
-|--------|--------|-----------|-------|
+**5-pin JST-XH "L" (left motor side):**
+
+| Pin | Signal | Direction | Gauge |
+|-----|--------|-----------|-------|
 | 1 | AIN1 (GPIO 17) | Body → Base | 26 AWG |
 | 2 | AIN2 (GPIO 27) | Body → Base | 26 AWG |
 | 3 | PWMA (GPIO 12) | Body → Base | 26 AWG |
-| 4 | BIN1 (GPIO 22) | Body → Base | 26 AWG |
-| 5 | BIN2 (GPIO 23) | Body → Base | 26 AWG |
-| 6 | PWMB (GPIO 13) | Body → Base | 26 AWG |
-| 7 | VCC (3.3V) | Body → Base | 26 AWG |
-| 8 | GND (logic) | Body → Base | 22 AWG |
-| 9 | GND (battery) | Base → Body | 22 AWG |
+| 4 | VCC (3.3V) | Body → Base | 26 AWG |
+| 5 | GND | Body → Base | 22 AWG |
 
-**Note:** Wires 8 and 9 can be combined into a single thicker ground wire since they connect to the same Pi GND rail. This reduces to **8 wires**.
+**5-pin JST-XH "R" (right motor side):**
 
-### Connector options
+| Pin | Signal | Direction | Gauge |
+|-----|--------|-----------|-------|
+| 1 | BIN1 (GPIO 22) | Body → Base | 26 AWG |
+| 2 | BIN2 (GPIO 23) | Body → Base | 26 AWG |
+| 3 | PWMB (GPIO 13) | Body → Base | 26 AWG |
+| 4 | VCC (3.3V) | Body → Base | 26 AWG |
+| 5 | GND | Body → Base | 22 AWG |
 
-**For prototyping:** 10-position screw terminal block mounted at the base top edge.
-- Easy to connect/disconnect bare wires with a screwdriver
-- Forgiving for rewiring
-- Bulky but fine for dev
+**Why 2x 5-pin instead of a single large connector:**
+- Each connector is self-contained per motor side — easy to debug one side at a time
+- Redundant VCC/GND on both connectors for robust power delivery
+- Symmetric pinout pattern (same layout, just left vs right)
+- Avoids using a 6-pin JST-XH, which is already used for the head LED connector — eliminates risk of swapping connectors between head and base
 
-**For final build:** 10-pin (2x5) IDC/ribbon connector or JST-XH 10-pin.
-- Clean single-plug disconnect
-- Polarity-keyed to prevent misconnection
-- Compact
+**Note:** Battery GND ties to Pi GND via the GND pins on either connector. Both reach the same base breadboard GND rail, establishing the critical common ground between motor power and Pi logic.
 
 ### Physical routing
 
 ```
-    Body barrel bottom
+    Body barrel bottom (webcam box)
     ┌─────────────────────┐
-    │  ·  ·  ·  ·  ·  ·  │ ← wires exit body through a hole
-    └────────┼────────────┘    or gap in the barrel floor
+    │  ·  ·  ·  ·  ·  ·  │ ← wires exit box through a hole in the bottom
+    └────────┼────────────┘
              │
      ┌───────┴────────┐
-     │ SCREW TERMINAL │  ← mounted on base top surface or inner wall
+     │ 2x JST-XH 5p  │  ← mating connectors at base-to-body interface
      └───────┬────────┘
              │
     Base interior
 ```
 
-- Drill a small hole (or use an existing gap) where the body barrel meets the base
-- Route the wire bundle through this hole
+- Route both JST-XH harnesses through a slot in the box bottom / barrel floor
+- The two 5-pin connectors disconnect cleanly to separate base from body
 - Strain-relieve with a zip tie inside the base
 
 ## Assembly Sequence
@@ -178,9 +183,9 @@ All pins use **BCM numbering** (not physical board pin numbers).
 
 ### Phase 3: Signal wiring to body
 
-11. **Prepare the 8-wire signal bundle** — cut 26 AWG wires to ~250 mm (10") each, plus one 22 AWG ground wire
-12. **Connect signal wires to TB6612FNG** — AIN1, AIN2, PWMA, BIN1, BIN2, PWMB, VCC, GND
-13. **Install connector** — screw terminal at the base-to-body interface point
+11. **Prepare two 5-wire harnesses** — for each JST-XH 5-pin connector, cut 3x 26 AWG signal wires + 1x 26 AWG VCC + 1x 22 AWG GND, ~250 mm (10") each
+12. **Crimp JST-XH 5-pin connectors** — one "L" (AIN1, AIN2, PWMA, VCC, GND) and one "R" (BIN1, BIN2, PWMB, VCC, GND)
+13. **Connect harness wires to TB6612FNG** — signal wires to control pins, VCC to logic power, GND to ground rail
 14. **Route wires** — bundle neatly, strain-relieve at pass-through point
 15. **Close the base** — replace access panel
 

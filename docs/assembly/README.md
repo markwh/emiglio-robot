@@ -23,6 +23,7 @@ The robot splits into three main sections, assembled bottom-up:
 - [Head Wiring](build-guide/head-wiring.md) — Electrical connections between head components and the Pi/amplifier in the body. Wiring diagram, connector pinouts, and assembly sequence.
 - [Body Wiring](build-guide/body-wiring.md) — Master wiring diagram, GPIO allocation, PAM8403 audio chain, power distribution, breadboard layout, and full integration assembly sequence.
 - [Base Wiring](build-guide/base-wiring.md) — Motor-to-TB6612FNG wiring, GPIO pin map, base-to-body connector pinout, and step-by-step assembly with troubleshooting.
+- [Connector Panel](build-guide/connector-panel.md) — Perfboard-backed connector panel for the electronics box: JST-XH headers (motors + LEDs), 3.5mm audio jacks (in + out), layout, and wiring.
 - [Pi Setup](build-guide/pi-setup.md) — First-timer walkthrough: flashing the OS, SSH, installing the emiglio stack, and testing the web UI.
 - **[Base Platform Build](build-guide/base-platform-build.md)** — End-to-end guide: from opening the base to driving the robot from your laptop via the web UI joystick.
 
@@ -38,7 +39,7 @@ The robot splits into three main sections, assembled bottom-up:
 ## Current Status
 
 - **Head:** Planning complete. Waiting on physical measurements and parts.
-- **Body:** Planning complete. Central hub tying head and base together; canister sled concept documented.
+- **Body:** Planning complete. Using webcam box as removable electronics enclosure with perfboard connector panel. Pi 5 and breadboard mounted inside.
 - **Base:** Planning complete. Motors in place; needs measurements, wire prep, and TB6612FNG + battery mounting.
 - **All sections** waiting on: Pi 5 delivery, parts purchase, and physical measurements.
 
