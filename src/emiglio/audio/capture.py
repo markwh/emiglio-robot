@@ -73,14 +73,23 @@ class AudioCapture:
         silence_threshold: float = 500.0,
         silence_duration: float = 1.5,
         chunk_duration: float = 0.1,
+        calibration_chunks: int = 5,
+        calibration_multiplier: float = 3.0,
     ) -> bytes:
         """Record until silence is detected or max duration is reached.
 
         Args:
             max_duration: Maximum recording length in seconds.
             silence_threshold: RMS amplitude below which is "silence".
+                If the noise floor (measured during the first few chunks)
+                is close to or above this value, the threshold is raised
+                automatically.
             silence_duration: How long silence must last to stop (seconds).
             chunk_duration: Size of each recording chunk (seconds).
+            calibration_chunks: Number of initial chunks used to measure
+                the ambient noise floor.
+            calibration_multiplier: The speech threshold is set to
+                ``max(silence_threshold, noise_floor * multiplier)``.
         """
         logger.info("Recording (silence-detect, max %.1fs)...", max_duration)
         rate = self.capture_rate
@@ -91,8 +100,10 @@ class AudioCapture:
         chunks: list[np.ndarray] = []
         silent_count = 0
         has_speech = False
+        rms_values: list[float] = []
+        effective_threshold = silence_threshold
 
-        for _ in range(max_chunks):
+        for i in range(max_chunks):
             chunk = await asyncio.to_thread(
                 sd.rec, chunk_frames,
                 samplerate=rate, channels=CHANNELS, dtype=DTYPE,
@@ -100,17 +111,40 @@ class AudioCapture:
             await asyncio.to_thread(sd.wait)
             chunks.append(chunk)
 
-            rms = np.sqrt(np.mean(chunk.astype(np.float32) ** 2))
-            if rms > silence_threshold:
+            rms = float(np.sqrt(np.mean(chunk.astype(np.float32) ** 2)))
+            rms_values.append(rms)
+
+            # After calibration period, adapt threshold to noise floor
+            if i == calibration_chunks - 1:
+                noise_floor = np.mean(rms_values)
+                effective_threshold = max(silence_threshold, noise_floor * calibration_multiplier)
+                logger.info(
+                    "Noise floor: %.1f RMS, effective speech threshold: %.1f",
+                    noise_floor, effective_threshold,
+                )
+
+            if rms > effective_threshold:
                 has_speech = True
                 silent_count = 0
             else:
                 silent_count += 1
 
+            # Log RMS periodically for diagnostics
+            if i % 10 == 0:
+                logger.debug("Capture chunk %d: RMS=%.1f (threshold=%.1f)", i, rms, effective_threshold)
+
             # Stop if we've had speech followed by enough silence
             if has_speech and silent_count >= silence_chunks_needed:
                 logger.info("Silence detected, stopping recording")
                 break
+
+        if rms_values:
+            peak_rms = max(rms_values)
+            avg_rms = np.mean(rms_values)
+            logger.info(
+                "Capture stats: %d chunks, avg RMS=%.1f, peak RMS=%.1f, threshold=%.1f, speech_detected=%s",
+                len(rms_values), avg_rms, peak_rms, effective_threshold, has_speech,
+            )
 
         audio = self._to_target_rate(np.concatenate(chunks), rate)
         logger.info("Recorded %d samples (%.1fs)", len(audio), len(audio) / self._sample_rate)

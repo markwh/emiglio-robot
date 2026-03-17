@@ -136,6 +136,74 @@ def create_app(
             logger.error("TTS test failed: %s", e)
             return {"ok": False, "error": str(e)}
 
+    @app.post("/mic/test")
+    async def mic_test():
+        """Record a short clip, play it back, and return capture diagnostics.
+
+        Records 3 seconds, plays the recording through the speaker, and
+        reports RMS levels so you can verify the mic is working.
+        """
+        if conversation is None or conversation._capture is None:
+            return {"ok": False, "error": "Audio capture not available"}
+        try:
+            import numpy as np
+
+            cap = conversation._capture
+            rate = cap.capture_rate
+            duration = 3.0
+            frames = int(duration * rate)
+            logger.info("Mic test: recording %.1fs at %dHz...", duration, rate)
+
+            import sounddevice as sd
+            audio = await asyncio.to_thread(
+                sd.rec, frames, samplerate=rate, channels=1, dtype="int16",
+            )
+            await asyncio.to_thread(sd.wait)
+
+            audio_flat = audio.flatten().astype(np.float32)
+            rms = float(np.sqrt(np.mean(audio_flat ** 2)))
+            peak = int(np.max(np.abs(audio_flat)))
+            # RMS over 0.5s windows
+            window = int(0.5 * rate)
+            window_rms = [
+                float(np.sqrt(np.mean(audio_flat[i : i + window] ** 2)))
+                for i in range(0, len(audio_flat) - window + 1, window)
+            ]
+
+            logger.info("Mic test results: RMS=%.1f, peak=%d, window_rms=%s", rms, peak, window_rms)
+
+            # Play back the recording so the user can hear what the mic captured
+            playback_ok = False
+            if conversation._playback is not None:
+                try:
+                    wav_buf = io.BytesIO()
+                    with wave.open(wav_buf, "wb") as wf:
+                        wf.setnchannels(1)
+                        wf.setsampwidth(2)
+                        wf.setframerate(rate)
+                        wf.writeframes(audio.tobytes())
+                    await conversation._playback.play_wav(wav_buf.getvalue())
+                    playback_ok = True
+                except Exception as e:
+                    logger.warning("Mic test playback failed: %s", e)
+
+            return {
+                "ok": True,
+                "sample_rate": rate,
+                "duration_s": duration,
+                "rms": round(rms, 1),
+                "peak": peak,
+                "window_rms": [round(v, 1) for v in window_rms],
+                "played_back": playback_ok,
+                "message": (
+                    "Mic looks good" if rms > 100
+                    else "Very low levels — check mic gain or connection"
+                ),
+            }
+        except Exception as e:
+            logger.error("Mic test failed: %s", e)
+            return {"ok": False, "error": str(e)}
+
     # -- Voice Lab endpoints --
 
     class VoicePreviewRequest(BaseModel):

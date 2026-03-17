@@ -18,6 +18,7 @@
   const stopBtn = document.getElementById("stop-btn");
   const talkBtn = document.getElementById("talk-btn");
   const testSpeakerBtn = document.getElementById("test-speaker-btn");
+  const testMicBtn = document.getElementById("test-mic-btn");
   const voiceStatus = document.getElementById("voice-status");
   const chatLog = document.getElementById("chat-log");
   const chatForm = document.getElementById("chat-form");
@@ -578,6 +579,31 @@
       addEventEntry("audio", `Speaker test error: ${e.message}`);
     } finally {
       testSpeakerBtn.disabled = false;
+    }
+  });
+
+  // Test mic button
+  testMicBtn.addEventListener("click", async () => {
+    testMicBtn.disabled = true;
+    voiceStatus.textContent = "Recording 3s...";
+    try {
+      const resp = await fetch("/mic/test", { method: "POST" });
+      const data = await resp.json();
+      if (data.ok) {
+        const msg = `Mic: RMS=${data.rms}, peak=${data.peak}` +
+          (data.played_back ? " (played back)" : " (no playback)") +
+          ` — ${data.message}`;
+        voiceStatus.textContent = msg;
+        addEventEntry("audio", msg);
+      } else {
+        voiceStatus.textContent = `Mic test failed: ${data.error}`;
+        addEventEntry("audio", `Mic test failed: ${data.error}`);
+      }
+    } catch (e) {
+      voiceStatus.textContent = `Mic test error: ${e.message}`;
+      addEventEntry("audio", `Mic test error: ${e.message}`);
+    } finally {
+      testMicBtn.disabled = false;
     }
   });
 
