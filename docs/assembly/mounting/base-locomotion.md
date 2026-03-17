@@ -128,37 +128,31 @@ The base and body are separate sections that stack. Cables need to pass between 
 
 | Cable | Type | Purpose |
 |-------|------|---------|
-| TB6612FNG control (6 wires) | 26 AWG signal wire | 3x per motor: forward, backward, enable (PWM) |
-| TB6612FNG logic power | 2 wires, 26 AWG | VCC (3.3V) + GND from Pi |
-| Motor battery GND | 1 wire, 22 AWG | Common ground between motor battery and Pi |
+| Left motor control (3 wires) | 26 AWG signal wire | AIN1, AIN2, PWMA |
+| Right motor control (3 wires) | 26 AWG signal wire | BIN1, BIN2, PWMB |
+| VCC (2 wires, duplicated) | 26 AWG | 3.3V logic power from Pi (one per connector) |
+| GND (2 wires, duplicated) | 22 AWG | Common ground (one per connector) |
 
-**If TB6612FNG is mounted in the base** (recommended):
-- 6 GPIO signal wires + 2 power wires + 1 common GND = **9 thin wires** pass from base to body
-- These can be bundled into a ribbon or use a single multi-pin connector
+**Total:** 10 wires across 2x JST-XH 5-pin connectors (see connector strategy below).
 
-**If TB6612FNG is mounted in the body instead:**
-- 4 motor power wires (2 per motor, 22 AWG — carrying motor current) pass from base to body
-- Plus battery power wires if battery is in the base
-- Thicker wires, more current, more noise — less ideal
+Battery GND ties to Pi GND through the base breadboard GND rail, which connects to both JST-XH GND pins.
 
-### Connector strategy (recommended)
+### Connector strategy
 
-Use a connector at the base-to-body interface so the sections can separate:
+**2x JST-XH 5-pin connectors**, split by motor side:
 
-**Option A: Multi-pin header connector**
-- 10-pin (or 2x5) dupont/JST connector
-- Carries all 9 signal + power wires in one plug
-- Clean, single disconnect point
+- **5-pin "L":** AIN1, AIN2, PWMA, VCC, GND (left motor control + power)
+- **5-pin "R":** BIN1, BIN2, PWMB, VCC, GND (right motor control + power)
 
-**Option B: Screw terminal block**
-- Mounted at the top edge of the base
-- Easy to wire/rewire during prototyping
-- Not as clean for disconnect but very forgiving
-
-**Recommended for prototyping:** Option B (screw terminals) initially, migrate to Option A (multi-pin connector) once wiring is finalized.
+**Why this design:**
+- Each connector is self-contained per motor side — debug or disconnect one side independently
+- Redundant VCC/GND on both connectors for robust power delivery
+- Symmetric pinout (same layout, left vs right)
+- Avoids 6-pin JST-XH, which is used for the head LED connector — prevents accidental swap
+- JST-XH connectors are polarity-keyed to prevent misconnection
 
 ```
-        BODY INTERIOR
+        BODY INTERIOR (webcam box)
         ┌─────────────────────┐
         │                     │
         │  Pi GPIO ──────┐    │
@@ -167,7 +161,8 @@ Use a connector at the base-to-body interface so the sections can separate:
         │          │  │   │   │
         └──────────┼──┼───┼───┘
                    │  │   │
-          ═══ CONNECTOR ═══  ← base-to-body interface
+          ═══ 2x JST-XH 5p ═══  ← base-to-body interface
+              "L"       "R"
                    │  │   │
         ┌──────────┼──┼───┼───┐
         │          │  │   │   │
@@ -175,7 +170,7 @@ Use a connector at the base-to-body interface so the sections can separate:
         │       │      │      │
         │    Motor L  Motor R │
         │                     │
-        │    [4xAA battery]   │
+        │    [4xD battery]    │
         └─────────────────────┘
 ```
 
@@ -209,9 +204,9 @@ Before starting assembly, measure and record these on the physical base:
 | Decision | Choice | Why |
 |----------|--------|-----|
 | TB6612FNG location | In the base | Short motor wires, less noise, base is self-contained locomotion module |
-| Motor power | 4xAA battery pack (6V) | Simple, replaceable, isolates motors from Pi power |
+| Motor power | 4xD battery pack (6V) | High capacity, reuses existing D-cell cases, isolates motors from Pi power |
 | Battery mounting | Velcro in base | Easy battery changes without opening base |
-| Base-to-body connector | Screw terminals (prototype) → multi-pin (final) | Screw terminals are forgiving during prototyping |
+| Base-to-body connector | 2x JST-XH 5-pin (left + right motor sides) | Per-side independence, avoids 6-pin confusion with head LED connector, polarity-keyed |
 | Motor wires | Extend or replace existing | Inspect stubs first — extend if possible, replace if too short |
 | Common ground | Single wire between battery GND and Pi GND | Required for TB6612FNG logic to reference Pi signal levels |
 
