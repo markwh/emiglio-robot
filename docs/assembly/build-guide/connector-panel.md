@@ -173,6 +173,10 @@ The wall opposite the Pi. All outbound connections live here. Audio OUT is on th
     - `LED` next to the 6-pin header
     - `AUD IN` and `AUD OUT` next to the 3.5mm jacks
 
+**Harness identification:** The two JST-XH 5-pin motor harnesses use identical wire color coding but are distinguished by zip tie color at the connector end:
+- **Blue zip tie** = Left motor harness ("L")
+- **Yellow zip tie** = Right motor harness ("R")
+
 ## Internal Wiring Summary
 
 ```
