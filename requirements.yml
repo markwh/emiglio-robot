@@ -46,13 +46,14 @@ requirements:
       panel
     milestone: v1.0
     workstream: assembly
-    status: not_started
+    status: done
     blocked_by: []
     tags:
     - hardware
     - critical-path
     - body
-    notes: 3.5mm aux cable from Pi to PAM8403, speaker via JST neck connector
+    notes: 'PAM8403 wired on breadboard. Audio chain: USB adapter → 3.5mm IN jack
+      → PAM8403 → 3.5mm OUT jack.'
   HW-04:
     title: USB webcam mounted in head
     milestone: v1.0
@@ -115,12 +116,12 @@ requirements:
     title: USB-C power cable routed into body
     milestone: v1.0
     workstream: assembly
-    status: not_started
+    status: done
     blocked_by: []
     tags:
     - hardware
     - body
-    notes: Rubber grommet at barrel wall hole
+    notes: Power routed via USB power bank for v1.0. Wall adapter deferred.
   HW-10:
     title: Head, body, base fully assembled and closeable
     milestone: v1.0
