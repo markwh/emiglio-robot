@@ -157,13 +157,13 @@ requirements:
     title: Webcam box holes cut and components fitted
     milestone: v1.0
     workstream: assembly
-    status: in_progress
+    status: done
     blocked_by: []
     tags:
     - hardware
     - body
-    notes: Webcam box serves as Pi/breadboard enclosure in body; holes needed for
-      USB-C power and cable routing
+    notes: Webcam box serves as Pi/breadboard enclosure in body; holes cut for USB-C
+      power and cable routing. Complete.
   HW-13:
     title: Breadboard wiring (Pi GPIO → TB6612FNG + PAM8403 → connector panel)
     milestone: v1.0

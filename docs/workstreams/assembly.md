@@ -51,4 +51,8 @@ docs/assembly/
 
 - When mounting plans affect wiring, coordinate with the electronics workstream.
 - When physical modifications affect component placement, update the relevant mounting doc.
-- Commit to `develop-assembly` and the PM agent will merge.
+- **When completing a requirement, update its status before committing:**
+  ```bash
+  uv run emiglio-pm req update HW-XX --status done --notes "brief description of what was done"
+  ```
+- Commit to `develop-assembly` (including any `requirements.yml` changes) and the PM agent will merge.
